@@ -60,7 +60,6 @@ export default function SettingsClient({
 
   async function saveExamSetup() {
     if (!activeExam?.id) return;
-
     setSavingExam(true);
 
     const response = await fetch("/api/settings/exam", {
