@@ -2,13 +2,21 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { CalendarDays, BookOpen, ArrowRight, Sparkles } from "lucide-react";
+import {
+  CalendarDays,
+  BookOpen,
+  ArrowRight,
+  Sparkles,
+} from "lucide-react";
+
 import { greetUser, daysUntil } from "@/lib/utils";
+
 import StatsCards from "@/components/dashboard/StatsCards";
 import TodaysTasks from "@/components/dashboard/TodaysTasks";
 import StudyProgress from "@/components/dashboard/StudyProgress";
 import RevisionDue from "@/components/dashboard/RevisionDue";
 import StartNextSession from "@/components/dashboard/StartNextSession";
+import LogStudyDialog from "@/components/dashboard/LogStudyDiallog";
 
 export default function DashboardClient({
   profile,
@@ -25,6 +33,15 @@ export default function DashboardClient({
 }) {
   const [taskList, setTaskList] = useState(tasks);
 
+  const [todayStudyMinutes, setTodayStudyMinutes] =
+    useState(todayMinutes);
+
+  const [streak, setStreak] = useState(
+    profile?.streakCount ?? 0
+  );
+
+  const [showLogStudy, setShowLogStudy] = useState(false);
+
   const totalTopics = subjects.reduce(
     (acc, subject) => acc + (subject.topics?.length ?? 0),
     0
@@ -34,31 +51,42 @@ export default function DashboardClient({
     (acc, subject) =>
       acc +
       (subject.topics?.filter(
-        (topic: any) => topic.status === "COMPLETED" || topic.mastered
+        (topic: any) =>
+          topic.status === "COMPLETED" || topic.mastered
       ).length ?? 0),
     0
   );
 
   const overallProgress =
-    totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
+    totalTopics > 0
+      ? Math.round((completedTopics / totalTopics) * 100)
+      : 0;
 
-  const daysLeft = exam?.targetDate ? daysUntil(exam.targetDate) : null;
+  const daysLeft = exam?.targetDate
+    ? daysUntil(exam.targetDate)
+    : null;
 
   const missingTargetDate = !exam?.targetDate;
   const missingSubjects = subjects.length === 0;
-  const showSetupReminder = missingTargetDate || missingSubjects;
+
+  const showSetupReminder =
+    missingTargetDate || missingSubjects;
 
   return (
     <div className="space-y-6 max-w-7xl">
+      {/* Greeting */}
       <div>
         <h1 className="text-2xl font-bold text-white">
-          {greetUser(profile?.name ?? null)} <span className="text-2xl">👋</span>
+          {greetUser(profile?.name ?? null)}{" "}
+          <span className="text-2xl">👋</span>
         </h1>
+
         <p className="text-slate-400 text-sm mt-1">
           Consistency today, success tomorrow.
         </p>
       </div>
 
+      {/* Setup Reminder */}
       {showSetupReminder && (
         <div className="rounded-2xl border border-violet-500/20 bg-violet-500/10 p-5">
           <div className="flex items-start gap-3">
@@ -67,9 +95,14 @@ export default function DashboardClient({
             </div>
 
             <div className="flex-1">
-              <h2 className="text-white font-semibold">Complete your exam setup</h2>
+              <h2 className="text-white font-semibold">
+                Complete your exam setup
+              </h2>
+
               <p className="text-sm text-slate-400 mt-1">
-                You skipped a few details during onboarding. Add them now to get better progress tracking.
+                You skipped a few details during onboarding.
+                Add them now to unlock better planning and
+                progress tracking.
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
@@ -82,11 +115,14 @@ export default function DashboardClient({
                       <CalendarDays className="w-4 h-4 text-violet-400" />
                       Set target exam date
                     </div>
+
                     <p className="text-xs text-slate-500 mt-1">
-                      Show countdown, days left, and deadline-based planning.
+                      Show countdown and deadline planning.
                     </p>
+
                     <div className="flex items-center gap-1 text-xs text-violet-400 mt-3">
-                      Set date <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                      Set date
+                      <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
                     </div>
                   </Link>
                 )}
@@ -100,11 +136,14 @@ export default function DashboardClient({
                       <BookOpen className="w-4 h-4 text-violet-400" />
                       Add your subjects
                     </div>
+
                     <p className="text-xs text-slate-500 mt-1">
-                      Start tracking syllabus, topics, and subject progress.
+                      Start tracking syllabus and topics.
                     </p>
+
                     <div className="flex items-center gap-1 text-xs text-violet-400 mt-3">
-                      Add subjects <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                      Add subjects
+                      <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
                     </div>
                   </Link>
                 )}
@@ -114,15 +153,20 @@ export default function DashboardClient({
         </div>
       )}
 
+      {/* Stats */}
       <StatsCards
-        streak={profile?.streakCount ?? 0}
+        streak={streak}
         daysLeft={daysLeft}
         targetDate={exam?.targetDate ?? null}
         overallProgress={overallProgress}
-        todayMinutes={todayMinutes}
-        dailyGoalMinutes={360}
+        todayMinutes={todayStudyMinutes}
+        dailyGoalMinutes={
+          profile?.dailyStudyGoalMinutes ?? 360
+        }
+        onLogStudy={() => setShowLogStudy(true)}
       />
 
+      {/* Main Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <TodaysTasks
           tasks={taskList}
@@ -135,10 +179,30 @@ export default function DashboardClient({
         <StartNextSession subjects={subjects} />
       </div>
 
+      {/* Bottom Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <StudyProgress subjects={subjects} overallProgress={overallProgress} />
+        <StudyProgress
+          subjects={subjects}
+          overallProgress={overallProgress}
+        />
+
         <RevisionDue subjects={subjects} />
       </div>
+
+      {/* Offline Study Dialog */}
+      {showLogStudy && (
+        <LogStudyDialog
+          subjects={subjects}
+          onClose={() => setShowLogStudy(false)}
+          onSaved={(minutes: number, newStreak: number) => {
+            setTodayStudyMinutes(
+              (prev) => prev + minutes
+            );
+
+            setStreak(newStreak);
+          }}
+        />
+      )}
     </div>
   );
 }
