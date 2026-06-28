@@ -1,12 +1,11 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { CalendarDays, Plus, Check, Circle, ExternalLink } from 'lucide-react';
-import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
-import type { Task, Subject } from '@/types';
-import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { useState } from "react";
+import { CalendarDays, Plus, Check, ExternalLink } from "lucide-react";
+import Link from "next/link";
+import type { Task, Subject } from "@/types";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface Props {
   tasks: Task[];
@@ -16,42 +15,63 @@ interface Props {
   subjects: Subject[];
 }
 
-export default function TodaysTasks({ tasks, setTasks, userId, examId, subjects }: Props) {
-  const [newTask, setNewTask] = useState('');
+export default function TodaysTasks({
+  tasks,
+  setTasks,
+  examId,
+}: Props) {
+  const [newTask, setNewTask] = useState("");
   const [adding, setAdding] = useState(false);
 
   async function toggleTask(task: Task) {
-    const { error } = await supabase
-      .from('tasks')
-      .update({ completed: !task.completed })
-      .eq('id', task.id);
-    if (!error) {
-      setTasks(tasks.map((t) => t.id === task.id ? { ...t, completed: !t.completed } : t));
+    const res = await fetch(`/api/tasks/${task.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        completed: !task.completed,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      toast.error(data.error || "Failed to update task");
+      return;
     }
+
+    setTasks(
+      tasks.map((t) => (t.id === task.id ? data.task : t))
+    );
   }
 
   async function addTask() {
-    if (!newTask.trim() || !userId) return;
-    const today = new Date().toISOString().split('T')[0];
-    const { data, error } = await supabase
-      .from('tasks')
-      .insert({
-        user_id: userId,
-        exam_id: examId || null,
+    if (!newTask.trim()) return;
+
+    const today = new Date().toISOString();
+
+    const res = await fetch("/api/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        examId: examId || null,
+        subjectId: null,
         title: newTask.trim(),
-        due_date: today,
-        completed: false,
-        priority: 'MEDIUM',
-      })
-      .select('*, subject:subjects(name, color)')
-      .single();
-    if (!error && data) {
-      setTasks([...tasks, data]);
-      setNewTask('');
-      setAdding(false);
-    } else {
-      toast.error('Failed to add task');
+        dueDate: today,
+        priority: "MEDIUM",
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      toast.error(data.error || "Failed to add task");
+      return;
     }
+
+    setTasks([...tasks, data.task]);
+    setNewTask("");
+    setAdding(false);
+    toast.success("Task added!");
   }
 
   const completed = tasks.filter((t) => t.completed).length;
@@ -63,7 +83,11 @@ export default function TodaysTasks({ tasks, setTasks, userId, examId, subjects 
           <CalendarDays className="w-4 h-4 text-violet-400" />
           <h3 className="font-semibold text-white">Today's Plan</h3>
         </div>
-        <Link href="/planner" className="text-xs text-violet-400 hover:text-violet-300 flex items-center gap-1">
+
+        <Link
+          href="/planner"
+          className="text-xs text-violet-400 hover:text-violet-300 flex items-center gap-1"
+        >
           View Planner <ExternalLink className="w-3 h-3" />
         </Link>
       </div>
@@ -71,30 +95,53 @@ export default function TodaysTasks({ tasks, setTasks, userId, examId, subjects 
       <div className="text-sm text-slate-400 mb-1">
         {completed} / {tasks.length} Tasks Completed
       </div>
+
       <div className="progress-bar mb-4">
-        <div className="progress-fill" style={{ width: tasks.length > 0 ? `${(completed / tasks.length) * 100}%` : '0%' }} />
+        <div
+          className="progress-fill"
+          style={{
+            width:
+              tasks.length > 0 ? `${(completed / tasks.length) * 100}%` : "0%",
+          }}
+        />
       </div>
 
       <div className="space-y-2 max-h-64 overflow-y-auto">
-        {tasks.map((task) => (
+        {tasks.map((task: any) => (
           <button
             key={task.id}
             onClick={() => toggleTask(task)}
             className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/3 transition-colors text-left group"
           >
-            <div className={cn(
-              'flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all',
-              task.completed ? 'bg-green-500 border-green-500' : 'border-slate-500 group-hover:border-violet-400'
-            )}>
+            <div
+              className={cn(
+                "flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all",
+                task.completed
+                  ? "bg-green-500 border-green-500"
+                  : "border-slate-500 group-hover:border-violet-400"
+              )}
+            >
               {task.completed && <Check className="w-3 h-3 text-white" />}
             </div>
-            <span className={cn('flex-1 text-sm', task.completed ? 'line-through text-slate-600' : 'text-slate-200')}>
+
+            <span
+              className={cn(
+                "flex-1 text-sm",
+                task.completed
+                  ? "line-through text-slate-600"
+                  : "text-slate-200"
+              )}
+            >
               {task.title}
             </span>
+
             {task.subject && (
               <span
                 className="text-xs px-2 py-0.5 rounded-md font-medium"
-                style={{ background: `${task.subject.color}25`, color: task.subject.color }}
+                style={{
+                  background: `${task.subject.color}25`,
+                  color: task.subject.color,
+                }}
               >
                 {task.subject.name}
               </span>
@@ -103,7 +150,9 @@ export default function TodaysTasks({ tasks, setTasks, userId, examId, subjects 
         ))}
 
         {tasks.length === 0 && !adding && (
-          <div className="text-center py-6 text-slate-600 text-sm">No tasks for today. Add one!</div>
+          <div className="text-center py-6 text-slate-600 text-sm">
+            No tasks for today. Add one!
+          </div>
         )}
 
         {adding && (
@@ -113,12 +162,16 @@ export default function TodaysTasks({ tasks, setTasks, userId, examId, subjects 
               type="text"
               value={newTask}
               onChange={(e) => setNewTask(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addTask()}
+              onKeyDown={(e) => e.key === "Enter" && addTask()}
               onBlur={() => !newTask && setAdding(false)}
               placeholder="Task name..."
               className="flex-1 px-3 py-2 bg-white/5 border border-violet-500/40 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none"
             />
-            <button onClick={addTask} className="px-3 py-2 bg-violet-600 rounded-xl text-white text-sm hover:bg-violet-500">
+
+            <button
+              onClick={addTask}
+              className="px-3 py-2 bg-violet-600 rounded-xl text-white text-sm hover:bg-violet-500"
+            >
               Add
             </button>
           </div>
