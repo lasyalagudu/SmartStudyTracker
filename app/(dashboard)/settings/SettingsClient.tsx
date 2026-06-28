@@ -37,6 +37,16 @@ export default function SettingsClient({
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingExam, setSavingExam] = useState(false);
   const [creatingExam, setCreatingExam] = useState(false);
+  const [goalHours, setGoalHours] = useState(
+    Math.floor((profile.dailyStudyGoalMinutes ?? 360) / 60),
+  );
+  const [goalMinutes, setGoalMinutes] = useState(
+    (profile.dailyStudyGoalMinutes ?? 360) % 60,
+  );
+  const [dailyTaskGoal, setDailyTaskGoal] = useState(
+    profile.dailyTaskGoal ?? 5,
+  );
+  const [savingGoals, setSavingGoals] = useState(false);
 
   async function saveProfile() {
     setSavingProfile(true);
@@ -104,6 +114,31 @@ export default function SettingsClient({
 
     toast.success("Exam created!");
     window.location.reload();
+  }
+
+  async function saveGoals() {
+    const totalMinutes = goalHours * 60 + goalMinutes;
+
+    setSavingGoals(true);
+
+    const response = await fetch("/api/settings/goals", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        dailyStudyGoalMinutes: totalMinutes,
+        dailyTaskGoal,
+      }),
+    });
+
+    const result = await response.json();
+    setSavingGoals(false);
+
+    if (!response.ok) {
+      toast.error(result.error || "Failed to update goals");
+      return;
+    }
+
+    toast.success("Study goals updated!");
   }
 
   return (
@@ -299,29 +334,63 @@ export default function SettingsClient({
           <div className="space-y-4">
             <div>
               <label className="text-sm text-slate-300 mb-2 block">
-                Daily Study Goal (hours)
+                Daily Study Goal
               </label>
-              <input
-                type="number"
-                min="1"
-                max="16"
-                defaultValue={6}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-violet-500/60 transition-all"
-              />
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <input
+                    type="number"
+                    min="0"
+                    max="16"
+                    value={goalHours}
+                    onChange={(e) => setGoalHours(Number(e.target.value))}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-violet-500/60"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Hours</p>
+                </div>
+
+                <div>
+                  <input
+                    type="number"
+                    min="0"
+                    max="59"
+                    value={goalMinutes}
+                    onChange={(e) => setGoalMinutes(Number(e.target.value))}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-violet-500/60"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Minutes</p>
+                </div>
+              </div>
             </div>
 
             <div>
               <label className="text-sm text-slate-300 mb-2 block">
                 Daily Task Goal
               </label>
+
               <input
                 type="number"
                 min="1"
                 max="20"
-                defaultValue={5}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-violet-500/60 transition-all"
+                value={dailyTaskGoal}
+                onChange={(e) => setDailyTaskGoal(Number(e.target.value))}
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-violet-500/60"
               />
             </div>
+
+            <button
+              onClick={saveGoals}
+              disabled={savingGoals}
+              className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 text-white rounded-xl text-sm font-medium hover:bg-violet-500 disabled:opacity-50"
+            >
+              {savingGoals ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              Save Goals
+            </button>
           </div>
         </div>
 

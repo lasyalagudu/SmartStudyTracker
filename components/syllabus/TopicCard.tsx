@@ -1,8 +1,13 @@
-"use client";
-
 import { useState } from "react";
 import { ChevronRight, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Topic {
   id: string;
@@ -17,12 +22,20 @@ interface Topic {
 
 interface Props {
   topic: Topic;
-  onUpdate: (topicId: string, field: keyof Topic, value: boolean | string) => void;
+  onUpdate: (
+    topicId: string,
+    field: keyof Topic,
+    value: boolean | string
+  ) => void;
   onRename?: (topic: Topic) => void;
   onDelete?: (topic: Topic) => void;
 }
 
-const CHECKBOXES: { field: keyof Topic; label: string; color: string }[] = [
+const CHECKBOXES: {
+  field: keyof Topic;
+  label: string;
+  color: string;
+}[] = [
   { field: "theoryDone", label: "Theory Done", color: "#3b82f6" },
   { field: "problemsDone", label: "Problems Solved", color: "#8b5cf6" },
   { field: "pyqsDone", label: "PYQs Done", color: "#06b6d4" },
@@ -42,9 +55,14 @@ function getTopicCompletion(topic: Topic) {
   return Math.round((done / 5) * 100);
 }
 
-export default function TopicCard({ topic, onUpdate, onRename, onDelete }: Props) {
+export default function TopicCard({
+  topic,
+  onUpdate,
+  onRename,
+  onDelete,
+}: Props) {
   const [expanded, setExpanded] = useState(false);
-  const [open, setOpen] = useState(false);
+
   const pct = getTopicCompletion(topic);
 
   const statusColor =
@@ -69,7 +87,10 @@ export default function TopicCard({ topic, onUpdate, onRename, onDelete }: Props
           className="text-slate-500 hover:text-slate-300 transition-colors flex-shrink-0"
         >
           <ChevronRight
-            className={cn("w-4 h-4 transition-transform", expanded && "rotate-90")}
+            className={cn(
+              "w-4 h-4 transition-transform",
+              expanded && "rotate-90"
+            )}
           />
         </button>
 
@@ -78,7 +99,9 @@ export default function TopicCard({ topic, onUpdate, onRename, onDelete }: Props
             <span
               className={cn(
                 "text-sm font-medium",
-                topic.status === "COMPLETED" ? "text-slate-400" : "text-white"
+                topic.status === "COMPLETED"
+                  ? "text-slate-400"
+                  : "text-white"
               )}
             >
               {topic.name}
@@ -86,7 +109,10 @@ export default function TopicCard({ topic, onUpdate, onRename, onDelete }: Props
 
             <span
               className="text-xs px-1.5 py-0.5 rounded-md font-medium"
-              style={{ background: `${statusColor}20`, color: statusColor }}
+              style={{
+                background: `${statusColor}20`,
+                color: statusColor,
+              }}
             >
               {pct}%
             </span>
@@ -104,7 +130,14 @@ export default function TopicCard({ topic, onUpdate, onRename, onDelete }: Props
                     ? "border-transparent"
                     : "border-slate-600 hover:border-slate-400 bg-transparent"
                 )}
-                style={topic[field] ? { background: color, borderColor: color } : {}}
+                style={
+                  topic[field]
+                    ? {
+                        background: color,
+                        borderColor: color,
+                      }
+                    : {}
+                }
                 title={label}
               >
                 {topic[field] && (
@@ -115,7 +148,11 @@ export default function TopicCard({ topic, onUpdate, onRename, onDelete }: Props
                     stroke="currentColor"
                     strokeWidth={3}
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                 )}
               </button>
@@ -123,48 +160,40 @@ export default function TopicCard({ topic, onUpdate, onRename, onDelete }: Props
           ))}
         </div>
 
-        <div className="relative flex-shrink-0">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpen((v) => !v);
-            }}
-            className="text-slate-600 hover:text-slate-400 transition-colors"
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              onClick={(e) => e.stopPropagation()}
+              className="flex-shrink-0 rounded-md p-1 text-slate-600 transition-colors hover:bg-white/5 hover:text-slate-300"
+            >
+              <MoreVertical className="w-4 h-4" />
+            </button>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent
+            align="end"
+            sideOffset={6}
+            className="w-36 border border-white/10 bg-[#0A0F1E]"
+            onClick={(e) => e.stopPropagation()}
           >
-            <MoreVertical className="w-4 h-4" />
-          </button>
+            <DropdownMenuItem
+              onClick={() => onRename?.(topic)}
+              className="cursor-pointer"
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+              Rename
+            </DropdownMenuItem>
 
-          {open && (
-            <div className="absolute right-0 top-7 z-[9999] w-36 rounded-xl border border-white/10 bg-[#0A0F1E] shadow-2xl py-1">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpen(false);
-                  onRename?.(topic);
-                }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-white/5"
-              >
-                <Pencil className="w-4 h-4" />
-                Rename
-              </button>
-
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpen(false);
-                  onDelete?.(topic);
-                }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10"
-              >
-                <Trash2 className="w-4 h-4" />
-                Delete
-              </button>
-            </div>
-          )}
-        </div>
+            <DropdownMenuItem
+              onClick={() => onDelete?.(topic)}
+              className="cursor-pointer text-red-400 focus:text-red-400"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {expanded && (
@@ -176,7 +205,9 @@ export default function TopicCard({ topic, onUpdate, onRename, onDelete }: Props
                 onClick={() => onUpdate(topic.id, field, !topic[field])}
                 className={cn(
                   "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs border transition-all",
-                  topic[field] ? "text-white" : "border-white/10 text-slate-500"
+                  topic[field]
+                    ? "text-white"
+                    : "border-white/10 text-slate-500"
                 )}
                 style={
                   topic[field]
