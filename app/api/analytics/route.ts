@@ -61,12 +61,16 @@ export async function GET() {
     const sessions = await prisma.timerSession.findMany({
       where: {
         userId: user.id,
+        examId: activeExam?.id, // NEW
         completed: true,
         sessionType: "FOCUS",
         startedAt: {
           gte: heatmapStart,
           lte: weekEnd,
         },
+      },
+      include: {
+        subject: true,
       },
       orderBy: {
         startedAt: "asc",
@@ -75,7 +79,7 @@ export async function GET() {
 
     const totalMinutes = sessions.reduce(
       (sum, session) => sum + session.durationMinutes,
-      0
+      0,
     );
 
     const weeklyMinutes = Array(7).fill(0);
@@ -100,7 +104,7 @@ export async function GET() {
       const minutes = sessions
         .filter(
           (session) =>
-            session.startedAt >= dayStart && session.startedAt <= dayEnd
+            session.startedAt >= dayStart && session.startedAt <= dayEnd,
         )
         .reduce((sum, session) => sum + session.durationMinutes, 0);
 
@@ -129,7 +133,7 @@ export async function GET() {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Analytics failed" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

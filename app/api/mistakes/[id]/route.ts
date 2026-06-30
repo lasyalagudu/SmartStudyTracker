@@ -24,13 +24,24 @@ export async function PATCH(
 
     const body = await req.json();
 
+    const data: any = {};
+
+    if ("resolved" in body) data.resolved = body.resolved;
+    if ("title" in body) data.title = body.title;
+    if ("description" in body) data.description = body.description;
+    if ("mistakeType" in body) data.mistakeType = body.mistakeType;
+    if ("subjectId" in body) data.subjectId = body.subjectId || null;
+    if ("topicId" in body) data.topicId = body.topicId || null;
+
     const mistake = await prisma.mistake.update({
       where: {
         id,
         userId: user.id,
       },
-      data: {
-        resolved: body.resolved,
+      data,
+      include: {
+        subject: true,
+        topic: true,
       },
     });
 

@@ -19,7 +19,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const { durationMinutes, subjectId } = await req.json();
+    const activeExam = await prisma.exam.findFirst({
+      where: {
+        userId: user.id,
+        isActive: true,
+      },
+    });
+
+    if (!activeExam) {
+      return NextResponse.json(
+        { error: "No active exam found" },
+        { status: 400 }
+      );
+    }
+
+    const { durationMinutes, subjectId, topicId } = await req.json();
 
     if (!durationMinutes || durationMinutes <= 0) {
       return NextResponse.json(
@@ -33,7 +47,9 @@ export async function POST(req: Request) {
     const session = await prisma.timerSession.create({
       data: {
         userId: user.id,
+        examId: activeExam.id,
         subjectId: subjectId || null,
+        topicId: topicId || null,
         durationMinutes,
         sessionType: "FOCUS",
         completed: true,
@@ -47,7 +63,7 @@ export async function POST(req: Request) {
       user.lastStudyDate
     );
 
-    await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { id: user.id },
       data: {
         streakCount: nextStreak.streakCount,
@@ -55,7 +71,11 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json({ success: true, session });
+    return NextResponse.json({
+      success: true,
+      session,
+      streak: updatedUser.streakCount,
+    });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to log study" },

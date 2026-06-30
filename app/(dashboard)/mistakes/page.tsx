@@ -6,13 +6,17 @@ import MistakesClient from "./MistakesClient";
 export default async function MistakesPage() {
   const clerkUser = await currentUser();
 
-  if (!clerkUser) redirect("/sign-in");
+  if (!clerkUser) {
+    redirect("/sign-in");
+  }
 
   const user = await prisma.user.findUnique({
     where: { clerkId: clerkUser.id },
   });
 
-  if (!user) redirect("/onboarding");
+  if (!user) {
+    redirect("/sso-callback");
+  }
 
   const activeExam = await prisma.exam.findFirst({
     where: {

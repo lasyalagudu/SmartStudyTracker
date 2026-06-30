@@ -44,9 +44,7 @@ export async function PATCH(
     }
 
     const user = await prisma.user.findUnique({
-      where: {
-        clerkId: clerkUser.id,
-      },
+      where: { clerkId: clerkUser.id },
     });
 
     if (!user) {
@@ -62,6 +60,9 @@ export async function PATCH(
           },
         },
       },
+      include: {
+        resources: true,
+      },
     });
 
     if (!existingTopic) {
@@ -69,12 +70,11 @@ export async function PATCH(
     }
 
     const body = await req.json();
+    const now = new Date();
 
     if (body.bulkComplete) {
       const topic = await prisma.topic.update({
-        where: {
-          id,
-        },
+        where: { id },
         data: {
           theoryDone: true,
           problemsDone: true,
@@ -82,38 +82,140 @@ export async function PATCH(
           revisionDone: true,
           mastered: true,
           status: "COMPLETED",
+          completedAt: existingTopic.completedAt ?? now,
+          lastRevisedAt: now,
+        },
+        include: {
+          resources: true,
         },
       });
 
       return NextResponse.json({ topic });
     }
 
-    const allowedFields = [
+    const data: any = {};
+
+    const allowedDirectFields = [
       "theoryDone",
       "problemsDone",
       "pyqsDone",
       "revisionDone",
       "mastered",
+      "difficulty",
+      "priority",
+      "estimatedHours",
+      "confidence",
+      "notes",
+      "doubts",
     ];
 
-    if (!allowedFields.includes(body.field)) {
-      return NextResponse.json({ error: "Invalid field" }, { status: 400 });
+    if (body.field) {
+      if (!allowedDirectFields.includes(body.field)) {
+        return NextResponse.json({ error: "Invalid field" }, { status: 400 });
+      }
+
+      data[body.field] = body.value;
     }
 
-    const updatedDraft = {
-      ...existingTopic,
-      [body.field]: body.value,
+    const directUpdateFields = [
+      "difficulty",
+      "priority",
+      "estimatedHours",
+      "confidence",
+      "notes",
+      "doubts",
+    ];
+
+    directUpdateFields.forEach((field) => {
+      if (field in body) {
+        data[field] = body[field];
+      }
+    });
+
+    const draft = {
+      theoryDone:
+        "theoryDone" in data ? Boolean(data.theoryDone) : existingTopic.theoryDone,
+      problemsDone:
+        "problemsDone" in data
+          ? Boolean(data.problemsDone)
+          : existingTopic.problemsDone,
+      pyqsDone:
+        "pyqsDone" in data ? Boolean(data.pyqsDone) : existingTopic.pyqsDone,
+      revisionDone:
+        "revisionDone" in data
+          ? Boolean(data.revisionDone)
+          : existingTopic.revisionDone,
+      mastered:
+        "mastered" in data ? Boolean(data.mastered) : existingTopic.mastered,
     };
 
-    const status = calculateStatus(updatedDraft);
+    const status = calculateStatus(draft);
+    data.status = status;
+
+    if (status === "COMPLETED" && !existingTopic.completedAt) {
+      data.completedAt = now;
+    }
+
+    if (status !== "COMPLETED") {
+      data.completedAt = null;
+    }
+
+    if (
+      ("revisionDone" in data && data.revisionDone === true) ||
+      ("mastered" in data && data.mastered === true)
+    ) {
+      data.lastRevisedAt = now;
+    }
+
+    if ("confidence" in data) {
+      const confidence = Number(data.confidence);
+
+      if (confidence < 0 || confidence > 5) {
+        return NextResponse.json(
+          { error: "Confidence must be between 0 and 5" },
+          { status: 400 }
+        );
+      }
+
+      data.confidence = confidence;
+    }
+
+    if ("estimatedHours" in data) {
+      const estimatedHours = Number(data.estimatedHours);
+
+      if (estimatedHours < 0) {
+        return NextResponse.json(
+          { error: "Estimated hours cannot be negative" },
+          { status: 400 }
+        );
+      }
+
+      data.estimatedHours = estimatedHours;
+    }
+
+    if (Array.isArray(body.resources)) {
+      await prisma.topicResource.deleteMany({
+        where: { topicId: id },
+      });
+
+      if (body.resources.length > 0) {
+        await prisma.topicResource.createMany({
+          data: body.resources
+            .filter((r: any) => r.title && r.url)
+            .map((r: any) => ({
+              topicId: id,
+              title: r.title,
+              url: r.url,
+            })),
+        });
+      }
+    }
 
     const topic = await prisma.topic.update({
-      where: {
-        id,
-      },
-      data: {
-        [body.field]: body.value,
-        status,
+      where: { id },
+      data,
+      include: {
+        resources: true,
       },
     });
 

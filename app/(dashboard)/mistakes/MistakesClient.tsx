@@ -1,7 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { FileWarning, Plus, Check, X, Loader2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  FileWarning,
+  Plus,
+  Check,
+  X,
+  Loader2,
+  Search,
+  Filter,
+  Pencil,
+  Trash2,
+  RotateCcw,
+} from "lucide-react";
 import { toast } from "sonner";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -23,24 +34,51 @@ export default function MistakesClient({
 }) {
   const [mistakes, setMistakes] = useState(initialMistakes);
   const [showForm, setShowForm] = useState(false);
+  const [editingMistake, setEditingMistake] = useState<any | null>(null);
 
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
-  const [type, setType] =
-    useState<(typeof MISTAKE_TYPES)[number]>("CONCEPTUAL");
+  const [type, setType] = useState<(typeof MISTAKE_TYPES)[number]>("CONCEPTUAL");
   const [subjectId, setSubjectId] = useState("");
-  const [adding, setAdding] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  async function addMistake() {
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "PENDING" | "RESOLVED">("ALL");
+  const [typeFilter, setTypeFilter] = useState<"ALL" | (typeof MISTAKE_TYPES)[number]>("ALL");
+  const [subjectFilter, setSubjectFilter] = useState("ALL");
+
+  function resetForm() {
+    setTitle("");
+    setDesc("");
+    setType("CONCEPTUAL");
+    setSubjectId("");
+    setEditingMistake(null);
+    setShowForm(false);
+  }
+
+  function openEdit(mistake: any) {
+    setEditingMistake(mistake);
+    setTitle(mistake.title ?? "");
+    setDesc(mistake.description ?? "");
+    setType(mistake.mistakeType ?? "CONCEPTUAL");
+    setSubjectId(mistake.subjectId ?? "");
+    setShowForm(true);
+  }
+
+  async function saveMistake() {
     if (!title.trim()) return;
 
-    setAdding(true);
+    setSaving(true);
 
-    const res = await fetch("/api/mistakes", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+    const url = editingMistake
+      ? `/api/mistakes/${editingMistake.id}`
+      : "/api/mistakes";
+
+    const method = editingMistake ? "PATCH" : "POST";
+
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title: title.trim(),
         description: desc || null,
@@ -50,68 +88,101 @@ export default function MistakesClient({
     });
 
     const data = await res.json();
-    setAdding(false);
+    setSaving(false);
 
     if (!res.ok) {
-      toast.error(data.error || "Failed to add mistake");
+      toast.error(data.error || "Failed to save mistake");
       return;
     }
 
-    setMistakes([data.mistake, ...mistakes]);
-    setTitle("");
-    setDesc("");
-    setType("CONCEPTUAL");
-    setSubjectId("");
-    setShowForm(false);
-    toast.success("Mistake logged!");
+    if (editingMistake) {
+      setMistakes((prev) =>
+        prev.map((m) => (m.id === editingMistake.id ? data.mistake : m))
+      );
+      toast.success("Mistake updated!");
+    } else {
+      setMistakes((prev) => [data.mistake, ...prev]);
+      toast.success("Mistake logged!");
+    }
+
+    resetForm();
   }
 
   async function toggleResolved(mistake: any) {
     const res = await fetch(`/api/mistakes/${mistake.id}`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        resolved: !mistake.resolved,
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resolved: !mistake.resolved }),
     });
 
+    const data = await res.json();
+
     if (!res.ok) {
-      toast.error("Failed to update mistake");
+      toast.error(data.error || "Failed to update mistake");
       return;
     }
 
-    setMistakes(
-      mistakes.map((m) =>
-        m.id === mistake.id ? { ...m, resolved: !m.resolved } : m
-      )
+    setMistakes((prev) =>
+      prev.map((m) => (m.id === mistake.id ? data.mistake ?? { ...m, resolved: !m.resolved } : m))
     );
+
+    toast.success(!mistake.resolved ? "Mistake mastered!" : "Moved back to pending");
   }
 
   async function deleteMistake(id: string) {
-    const res = await fetch(`/api/mistakes/${id}`, {
-      method: "DELETE",
-    });
+    const ok = confirm("Delete this mistake? This cannot be undone.");
+    if (!ok) return;
+
+    const res = await fetch(`/api/mistakes/${id}`, { method: "DELETE" });
 
     if (!res.ok) {
       toast.error("Failed to delete mistake");
       return;
     }
 
-    setMistakes(mistakes.filter((m) => m.id !== id));
+    setMistakes((prev) => prev.filter((m) => m.id !== id));
+    toast.success("Mistake deleted");
   }
+
+  const filteredMistakes = useMemo(() => {
+    return mistakes.filter((m) => {
+      const matchesSearch =
+        m.title?.toLowerCase().includes(search.toLowerCase()) ||
+        m.description?.toLowerCase().includes(search.toLowerCase()) ||
+        m.subject?.name?.toLowerCase().includes(search.toLowerCase());
+
+      const matchesStatus =
+        statusFilter === "ALL" ||
+        (statusFilter === "PENDING" && !m.resolved) ||
+        (statusFilter === "RESOLVED" && m.resolved);
+
+      const matchesType = typeFilter === "ALL" || m.mistakeType === typeFilter;
+
+      const matchesSubject =
+        subjectFilter === "ALL" || m.subjectId === subjectFilter;
+
+      return matchesSearch && matchesStatus && matchesType && matchesSubject;
+    });
+  }, [mistakes, search, statusFilter, typeFilter, subjectFilter]);
 
   const pending = mistakes.filter((m) => !m.resolved);
   const resolved = mistakes.filter((m) => m.resolved);
 
+  const mostCommonType =
+    mistakes.length > 0
+      ? MISTAKE_TYPES.map((t) => ({
+          type: t,
+          count: mistakes.filter((m) => m.mistakeType === t).length,
+        })).sort((a, b) => b.count - a.count)[0]
+      : null;
+
   return (
-    <div className="max-w-3xl">
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-6xl space-y-6">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-white">Mistakes Book</h1>
           <p className="text-slate-400 text-sm mt-1">
-            Log mistakes. Revisit them. Never repeat them.
+            Turn every mistake into a revision advantage.
           </p>
         </div>
 
@@ -123,47 +194,129 @@ export default function MistakesClient({
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Total", value: mistakes.length, color: "#7C3AED" },
-          { label: "Pending", value: pending.length, color: "#D97706" },
-          { label: "Resolved", value: resolved.length, color: "#059669" },
+          { label: "Total Mistakes", value: mistakes.length, color: "#7C3AED" },
+          { label: "Pending Review", value: pending.length, color: "#D97706" },
+          { label: "Mastered", value: resolved.length, color: "#059669" },
+          {
+            label: "Common Type",
+            value: mostCommonType?.type ?? "—",
+            color: mostCommonType
+              ? TYPE_COLORS[mostCommonType.type as keyof typeof TYPE_COLORS]
+              : "#64748b",
+          },
         ].map((s) => (
           <div
             key={s.label}
-            className="bg-[#0A0F1E] border border-white/8 rounded-2xl p-4 text-center"
+            className="bg-[#0A0F1E] border border-white/8 rounded-2xl p-5"
           >
             <div className="text-2xl font-bold" style={{ color: s.color }}>
               {s.value}
             </div>
-            <div className="text-xs text-slate-500 mt-0.5">{s.label}</div>
+            <div className="text-xs text-slate-500 mt-1">{s.label}</div>
           </div>
         ))}
+      </div>
+
+      <div className="bg-[#0A0F1E] border border-white/8 rounded-2xl p-4">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+          <div className="relative lg:col-span-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search mistakes..."
+              className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/60"
+            />
+          </div>
+
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as any)}
+            className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-violet-500/60"
+          >
+            <option value="ALL">All Status</option>
+            <option value="PENDING">Pending</option>
+            <option value="RESOLVED">Mastered</option>
+          </select>
+
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value as any)}
+            className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-violet-500/60"
+          >
+            <option value="ALL">All Types</option>
+            {MISTAKE_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={subjectFilter}
+            onChange={(e) => setSubjectFilter(e.target.value)}
+            className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-violet-500/60"
+          >
+            <option value="ALL">All Subjects</option>
+            {subjects.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {(search || statusFilter !== "ALL" || typeFilter !== "ALL" || subjectFilter !== "ALL") && (
+          <button
+            onClick={() => {
+              setSearch("");
+              setStatusFilter("ALL");
+              setTypeFilter("ALL");
+              setSubjectFilter("ALL");
+            }}
+            className="mt-3 flex items-center gap-1 text-xs text-slate-500 hover:text-violet-400"
+          >
+            <RotateCcw className="w-3 h-3" />
+            Clear filters
+          </button>
+        )}
       </div>
 
       {mistakes.length === 0 && (
         <div className="text-center py-16 text-slate-600">
           <FileWarning className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <div className="text-sm">
-            No mistakes logged yet. Start logging to learn faster!
+          <div className="text-sm text-slate-400">
+            No mistakes logged yet.
           </div>
+          <p className="text-xs text-slate-600 mt-1">
+            Start logging mistakes after practice sessions or mock tests.
+          </p>
+        </div>
+      )}
+
+      {mistakes.length > 0 && filteredMistakes.length === 0 && (
+        <div className="text-center py-14 text-slate-600">
+          <Filter className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <div className="text-sm">No mistakes match your filters.</div>
         </div>
       )}
 
       <div className="space-y-3">
-        {mistakes.map((m) => (
+        {filteredMistakes.map((m) => (
           <div
             key={m.id}
             className={cn(
               "bg-[#0A0F1E] border rounded-xl p-4 transition-all",
               m.resolved
-                ? "border-white/5 opacity-60"
+                ? "border-green-500/15 opacity-70"
                 : "border-white/8 hover:border-violet-500/20"
             )}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
                   <span
                     className="text-xs px-2 py-0.5 rounded-full font-medium"
                     style={{
@@ -186,9 +339,16 @@ export default function MistakesClient({
                     </span>
                   )}
 
-                  {m.resolved && (
-                    <span className="text-xs text-green-400">✓ Resolved</span>
-                  )}
+                  <span
+                    className={cn(
+                      "text-xs px-2 py-0.5 rounded-full",
+                      m.resolved
+                        ? "bg-green-500/10 text-green-400"
+                        : "bg-orange-500/10 text-orange-400"
+                    )}
+                  >
+                    {m.resolved ? "Mastered" : "Needs Review"}
+                  </span>
                 </div>
 
                 <div
@@ -201,19 +361,20 @@ export default function MistakesClient({
                 </div>
 
                 {m.description && (
-                  <div className="text-xs text-slate-500 mt-1">
+                  <div className="text-xs text-slate-500 mt-1 leading-relaxed">
                     {m.description}
                   </div>
                 )}
 
-                <div className="text-xs text-slate-600 mt-2">
-                  {formatDate(m.createdAt)}
+                <div className="text-xs text-slate-600 mt-3">
+                  Logged on {formatDate(m.createdAt)}
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 <button
                   onClick={() => toggleResolved(m)}
+                  title={m.resolved ? "Move to pending" : "Mark mastered"}
                   className={cn(
                     "p-1.5 rounded-lg transition-colors",
                     m.resolved
@@ -225,10 +386,19 @@ export default function MistakesClient({
                 </button>
 
                 <button
+                  onClick={() => openEdit(m)}
+                  title="Edit mistake"
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-violet-400 hover:bg-violet-500/10 transition-colors"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+
+                <button
                   onClick={() => deleteMistake(m.id)}
+                  title="Delete mistake"
                   className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                 >
-                  <X className="w-4 h-4" />
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -240,11 +410,10 @@ export default function MistakesClient({
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-[#0A0F1E] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl">
             <div className="flex items-center justify-between mb-5">
-              <h3 className="font-semibold text-white">Log Mistake</h3>
-              <button
-                onClick={() => setShowForm(false)}
-                className="text-slate-500 hover:text-white"
-              >
+              <h3 className="font-semibold text-white">
+                {editingMistake ? "Edit Mistake" : "Log Mistake"}
+              </h3>
+              <button onClick={resetForm} className="text-slate-500 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -252,35 +421,33 @@ export default function MistakesClient({
             <div className="space-y-4">
               <div>
                 <label className="text-sm text-slate-300 mb-2 block">
-                  Title / Description
+                  What went wrong?
                 </label>
                 <input
                   autoFocus
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="What went wrong?"
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/60 transition-all"
+                  placeholder="Example: Used wrong formula in profit & loss"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/60"
                 />
               </div>
 
               <div>
                 <label className="text-sm text-slate-300 mb-2 block">
-                  Notes optional
+                  Correction / Notes optional
                 </label>
                 <textarea
                   value={desc}
                   onChange={(e) => setDesc(e.target.value)}
-                  placeholder="Add more details..."
+                  placeholder="Write the correct concept or what to remember next time..."
                   rows={3}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/60 transition-all resize-none"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/60 resize-none"
                 />
               </div>
 
               <div>
-                <label className="text-sm text-slate-300 mb-2 block">
-                  Type
-                </label>
+                <label className="text-sm text-slate-300 mb-2 block">Type</label>
                 <div className="grid grid-cols-2 gap-2">
                   {MISTAKE_TYPES.map((t) => (
                     <button
@@ -316,7 +483,7 @@ export default function MistakesClient({
                   <select
                     value={subjectId}
                     onChange={(e) => setSubjectId(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-violet-500/60 transition-all"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-violet-500/60"
                   >
                     <option value="">No subject</option>
                     {subjects.map((s) => (
@@ -330,23 +497,23 @@ export default function MistakesClient({
 
               <div className="flex gap-3 pt-2">
                 <button
-                  onClick={() => setShowForm(false)}
+                  onClick={resetForm}
                   className="flex-1 py-2.5 border border-white/15 text-slate-300 rounded-xl text-sm hover:bg-white/5"
                 >
                   Cancel
                 </button>
 
                 <button
-                  onClick={addMistake}
-                  disabled={!title.trim() || adding}
+                  onClick={saveMistake}
+                  disabled={!title.trim() || saving}
                   className="flex-1 py-2.5 bg-violet-600 text-white rounded-xl text-sm font-semibold hover:bg-violet-500 disabled:opacity-40 flex items-center justify-center gap-2"
                 >
-                  {adding ? (
+                  {saving ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <Plus className="w-4 h-4" />
                   )}
-                  Log
+                  {editingMistake ? "Save" : "Log"}
                 </button>
               </div>
             </div>

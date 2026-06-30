@@ -8,17 +8,17 @@ datasource db {
 }
 
 model User {
-  id                  String    @id @default(uuid())
-  clerkId             String    @unique
-  email               String    @unique
-  name                String?
-  onboardingCompleted Boolean   @default(false)
-  streakCount         Int       @default(0)
-  dailyStudyGoalMinutes Int @default(360)
-  dailyTaskGoal         Int @default(5)
-  lastStudyDate       DateTime?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  id                    String    @id @default(uuid())
+  clerkId               String    @unique
+  email                 String    @unique
+  name                  String?
+  onboardingCompleted   Boolean   @default(false)
+  streakCount           Int       @default(0)
+  dailyStudyGoalMinutes Int       @default(360)
+  dailyTaskGoal         Int       @default(5)
+  lastStudyDate         DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   exams         Exam[]
   tasks         Task[]
@@ -35,9 +35,10 @@ model Exam {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subjects Subject[]
-  tasks    Task[]
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timerSessions TimerSession[]
+  subjects      Subject[]
+  tasks         Task[]
 
   @@index([userId])
 }
@@ -61,30 +62,48 @@ model Subject {
 }
 
 model Topic {
-  id           String      @id @default(uuid())
-  subjectId    String
-  name         String
-  order        Int         @default(0)
-  status       TopicStatus @default(NOT_STARTED)
-  theoryDone   Boolean     @default(false)
-  problemsDone Boolean     @default(false)
-  pyqsDone     Boolean     @default(false)
-  revisionDone Boolean     @default(false)
-  mastered     Boolean     @default(false)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id        String @id @default(uuid())
+  subjectId String
+  name      String
+  order     Int    @default(0)
 
-  subject       Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  status TopicStatus @default(NOT_STARTED)
+
+  theoryDone   Boolean @default(false)
+  problemsDone Boolean @default(false)
+  pyqsDone     Boolean @default(false)
+  revisionDone Boolean @default(false)
+  mastered     Boolean @default(false)
+
+  difficulty     Difficulty @default(MEDIUM)
+  priority       Priority   @default(MEDIUM)
+  estimatedHours Int        @default(1)
+  confidence     Int        @default(0)
+
+  completedAt   DateTime?
+  lastRevisedAt DateTime?
+
+  notes  String?
+  doubts String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subject       Subject         @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   tasks         Task[]
   timerSessions TimerSession[]
   mistakes      Mistake[]
+  resources     TopicResource[]
 
   @@index([subjectId])
   @@index([mastered])
+  @@index([status])
+  @@index([difficulty])
+  @@index([priority])
 }
 
 model Task {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   userId      String
   examId      String?
   subjectId   String?
@@ -92,10 +111,10 @@ model Task {
   title       String
   description String?
   dueDate     DateTime?
-  completed   Boolean  @default(false)
-  priority    Priority @default(MEDIUM)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  completed   Boolean   @default(false)
+  priority    Priority  @default(MEDIUM)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   exam    Exam?    @relation(fields: [examId], references: [id], onDelete: SetNull)
@@ -108,9 +127,22 @@ model Task {
   @@index([completed])
 }
 
+model TopicResource {
+  id        String   @id @default(uuid())
+  topicId   String
+  title     String
+  url       String
+  createdAt DateTime @default(now())
+
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@index([topicId])
+}
+
 model TimerSession {
   id              String      @id @default(uuid())
   userId          String
+  examId          String?
   subjectId       String?
   topicId         String?
   durationMinutes Int
@@ -122,9 +154,11 @@ model TimerSession {
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   subject Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  exam    Exam?    @relation(fields: [examId], references: [id], onDelete: SetNull)
   topic   Topic?   @relation(fields: [topicId], references: [id], onDelete: SetNull)
 
   @@index([userId])
+  @@index([examId])
   @@index([startedAt])
   @@index([completed])
 }
@@ -172,4 +206,10 @@ enum MistakeType {
   CALCULATION
   CARELESS
   OTHER
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
 }
