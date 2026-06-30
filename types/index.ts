@@ -88,3 +88,103 @@ export interface Mistake {
   created_at: string;
   updated_at: string;
 }
+
+export interface MonthlyAnalytics {
+  exam: {
+    id: string;
+    name: string;
+    targetDate?: string;
+  };
+
+  range: {
+    year: number;
+    month: number;
+    monthStart: string;
+    monthEnd: string;
+  };
+
+  stats: {
+    totalMinutes: number;
+    totalSessions: number;
+    activeStudyDays: number;
+    consistency: number;
+    monthlyGoalMinutes: number;
+    monthlyGoalPercent: number;
+    overallProgress: number;
+    totalTopics: number;
+    completedTopics: number;
+    topicsCompletedThisMonth: number;
+  };
+
+  dailyMinutes: number[];
+
+  weeklyTrend: number[];
+
+  subjectDistribution: {
+    id: string;
+    name: string;
+    color: string;
+    minutes: number;
+    sessions: number;
+  }[];
+
+  bestSubject: any;
+  weakSubject: any;
+
+  achievements: {
+    title: string;
+    unlocked: boolean;
+  }[];
+
+  comparison: {
+    studyTimeChange: number;
+    sessionsChange: number;
+  };
+
+  insight: string;
+}
+
+export interface SubjectAnalyticsTopic {
+  id: string;
+  name: string;
+  status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+  difficulty: "EASY" | "MEDIUM" | "HARD";
+  priority: "LOW" | "MEDIUM" | "HIGH";
+  confidence: number;
+  readiness: number;
+  health: "EXCELLENT" | "GOOD" | "NEEDS_REVISION" | "WEAK" | "IN_PROGRESS";
+  nextAction: string;
+  estimatedHours: number;
+  lastRevisedAt: string | null;
+  completedAt: string | null;
+}
+
+export interface SubjectAnalyticsItem {
+  id: string;
+  name: string;
+  color: string;
+  totalTopics: number;
+  completedTopics: number;
+  progress: number;
+  totalStudyMinutes: number;
+  totalSessions: number;
+  averageConfidence: number;
+  breakdown: {
+    theoryDone: number;
+    problemsDone: number;
+    pyqsDone: number;
+    revisionDone: number;
+    mastered: number;
+  };
+  weakTopics: SubjectAnalyticsTopic[];
+  topicHealth: SubjectAnalyticsTopic[];
+}
+
+export interface SubjectAnalyticsData {
+  exam: {
+    id: string;
+    name: string;
+  };
+  subjects: SubjectAnalyticsItem[];
+}
+
