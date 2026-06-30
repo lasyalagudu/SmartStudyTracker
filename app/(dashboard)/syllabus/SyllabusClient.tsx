@@ -23,11 +23,11 @@ export default function SyllabusClient({
   subjects: any[];
 }) {
   const [subjects, setSubjects] = useState(initialSubjects);
-  const [activeSubjectId, setActiveSubjectId] = useState(
-    initialSubjects[0]?.id ?? ""
+  const [selectedTopic, setSelectedTopic] = useState<any | null>(null);
+  const [selectedSubjectForTopic, setSelectedSubjectForTopic] = useState<any | null>(
+    initialSubjects[0] ?? null
   );
 
-  const [selectedTopic, setSelectedTopic] = useState<any | null>(null);
   const [showAddSubject, setShowAddSubject] = useState(false);
   const [showAddTopic, setShowAddTopic] = useState(false);
 
@@ -37,69 +37,20 @@ export default function SyllabusClient({
   const [priorityFilter, setPriorityFilter] = useState<FilterValue>("ALL");
   const [sortBy, setSortBy] = useState("ORDER");
 
-  const activeSubject = subjects.find((s) => s.id === activeSubjectId);
-
   const examTopics = useMemo(() => {
-  return subjects.flatMap((subject) =>
-    (subject.topics ?? []).map((topic: any) => ({
-      ...topic,
-      subject: {
-        id: subject.id,
-        name: subject.name,
-        color: subject.color,
-      },
-    }))
-  );
-}, [subjects]);
+    return subjects.flatMap((subject) =>
+      (subject.topics ?? []).map((topic: any) => ({
+        ...topic,
+        subject: {
+          id: subject.id,
+          name: subject.name,
+          color: subject.color,
+        },
+      }))
+    );
+  }, [subjects]);
 
-const subjectTopics = useMemo(() => {
-  if (!activeSubject) return [];
-
-  return (activeSubject.topics ?? []).map((topic: any) => ({
-    ...topic,
-    subject: {
-      id: activeSubject.id,
-      name: activeSubject.name,
-      color: activeSubject.color,
-    },
-  }));
-}, [activeSubject]);
-
-  const allTopics = useMemo(() => {
-    if (!activeSubject) return [];
-
-    return (activeSubject.topics ?? []).map((topic: any) => ({
-      ...topic,
-      subject: {
-        id: activeSubject.id,
-        name: activeSubject.name,
-        color: activeSubject.color,
-      },
-    }));
-  }, [activeSubject]);
-
-  const filteredTopics = useMemo(() => {
-    let result = [...subjectTopics];
-
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter((topic) =>
-        topic.name.toLowerCase().includes(q)
-      );
-    }
-
-    if (statusFilter !== "ALL") {
-      result = result.filter((topic) => topic.status === statusFilter);
-    }
-
-    if (difficultyFilter !== "ALL") {
-      result = result.filter((topic) => topic.difficulty === difficultyFilter);
-    }
-
-    if (priorityFilter !== "ALL") {
-      result = result.filter((topic) => topic.priority === priorityFilter);
-    }
-
+  const filteredSubjects = useMemo(() => {
     const priorityRank: Record<string, number> = {
       HIGH: 3,
       MEDIUM: 2,
@@ -122,29 +73,67 @@ const subjectTopics = useMemo(() => {
       ].filter(Boolean).length;
     }
 
-    if (sortBy === "PRIORITY") {
-      result.sort(
-        (a, b) => priorityRank[b.priority] - priorityRank[a.priority]
-      );
-    }
+    return subjects
+      .map((subject) => {
+        let topics = (subject.topics ?? []).map((topic: any) => ({
+          ...topic,
+          subject: {
+            id: subject.id,
+            name: subject.name,
+            color: subject.color,
+          },
+        }));
 
-    if (sortBy === "DIFFICULTY") {
-      result.sort(
-        (a, b) => difficultyRank[b.difficulty] - difficultyRank[a.difficulty]
-      );
-    }
+        if (search.trim()) {
+          const q = search.toLowerCase();
+          topics = topics.filter((topic: any) =>
+            topic.name.toLowerCase().includes(q)
+          );
+        }
 
-    if (sortBy === "PROGRESS") {
-      result.sort((a, b) => readiness(b) - readiness(a));
-    }
+        if (statusFilter !== "ALL") {
+          topics = topics.filter((topic: any) => topic.status === statusFilter);
+        }
 
-    if (sortBy === "ESTIMATED_HOURS") {
-      result.sort((a, b) => b.estimatedHours - a.estimatedHours);
-    }
+        if (difficultyFilter !== "ALL") {
+          topics = topics.filter(
+            (topic: any) => topic.difficulty === difficultyFilter
+          );
+        }
 
-    return result;
+        if (priorityFilter !== "ALL") {
+          topics = topics.filter((topic: any) => topic.priority === priorityFilter);
+        }
+
+        if (sortBy === "PRIORITY") {
+          topics.sort(
+            (a: any, b: any) => priorityRank[b.priority] - priorityRank[a.priority]
+          );
+        }
+
+        if (sortBy === "DIFFICULTY") {
+          topics.sort(
+            (a: any, b: any) =>
+              difficultyRank[b.difficulty] - difficultyRank[a.difficulty]
+          );
+        }
+
+        if (sortBy === "PROGRESS") {
+          topics.sort((a: any, b: any) => readiness(b) - readiness(a));
+        }
+
+        if (sortBy === "ESTIMATED_HOURS") {
+          topics.sort((a: any, b: any) => b.estimatedHours - a.estimatedHours);
+        }
+
+        return {
+          ...subject,
+          topics,
+        };
+      })
+      .filter((subject) => subject.topics.length > 0 || !search.trim());
   }, [
-    subjectTopics,
+    subjects,
     search,
     statusFilter,
     difficultyFilter,
@@ -154,18 +143,18 @@ const subjectTopics = useMemo(() => {
 
   const totalTopics = examTopics.length;
 
-const completedTopics = examTopics.filter(
-  (topic) => topic.status === "COMPLETED" || topic.mastered
-).length;
+  const completedTopics = examTopics.filter(
+    (topic) => topic.status === "COMPLETED" || topic.mastered
+  ).length;
 
-const inProgressTopics = examTopics.filter(
-  (topic) => topic.status === "IN_PROGRESS"
-).length;
+  const inProgressTopics = examTopics.filter(
+    (topic) => topic.status === "IN_PROGRESS"
+  ).length;
 
-const estimatedHours = examTopics.reduce(
-  (sum, topic) => sum + (topic.estimatedHours ?? 0),
-  0
-);
+  const estimatedHours = examTopics.reduce(
+    (sum, topic) => sum + (topic.estimatedHours ?? 0),
+    0
+  );
 
   function updateTopicInState(updatedTopic: any) {
     setSubjects((prev) =>
@@ -187,9 +176,10 @@ const estimatedHours = examTopics.reduce(
     );
   }
 
-  const selectedSubject = subjects.find(
-    (subject) => subject.id === activeSubjectId
-  );
+  function openAddTopic(subject: any) {
+    setSelectedSubjectForTopic(subject);
+    setShowAddTopic(true);
+  }
 
   return (
     <div className="max-w-7xl space-y-6">
@@ -207,32 +197,6 @@ const estimatedHours = examTopics.reduce(
         estimatedHours={estimatedHours}
       />
 
-      <div className="flex items-center gap-2 overflow-x-auto pb-2">
-        {subjects.map((subject) => (
-          <button
-            key={subject.id}
-            onClick={() => {
-              setActiveSubjectId(subject.id);
-              setSelectedTopic(null);
-            }}
-            className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all flex-shrink-0 ${
-              activeSubjectId === subject.id
-                ? "bg-violet-600 text-white border-violet-500"
-                : "bg-[#0A0F1E] text-slate-400 border-white/10 hover:text-white hover:border-violet-500/30"
-            }`}
-          >
-            {subject.name}
-          </button>
-        ))}
-
-        <button
-          onClick={() => setShowAddSubject(true)}
-          className="px-4 py-2 rounded-xl text-sm border border-dashed border-white/20 text-slate-500 hover:text-violet-400 hover:border-violet-500/40 flex-shrink-0"
-        >
-          + Subject
-        </button>
-      </div>
-
       <SyllabusFilterBar
         search={search}
         setSearch={setSearch}
@@ -245,18 +209,30 @@ const estimatedHours = examTopics.reduce(
         sortBy={sortBy}
         setSortBy={setSortBy}
         onAddTopic={() => {
-          if (!selectedSubject) {
-            toast.error("Add or select a subject first");
+          if (!selectedSubjectForTopic && subjects.length === 0) {
+            toast.error("Add a subject first");
             return;
           }
+
+          setSelectedSubjectForTopic(selectedSubjectForTopic ?? subjects[0]);
           setShowAddTopic(true);
         }}
-        disableAddTopic={!selectedSubject}
+        disableAddTopic={subjects.length === 0}
       />
 
+      <div className="flex justify-end">
+        <button
+          onClick={() => setShowAddSubject(true)}
+          className="px-4 py-2 rounded-xl text-sm border border-dashed border-white/20 text-slate-500 hover:text-violet-400 hover:border-violet-500/40"
+        >
+          + Subject
+        </button>
+      </div>
+
       <TopicTable
-        topics={filteredTopics}
+        subjects={filteredSubjects}
         onSelectTopic={(topic) => setSelectedTopic(topic)}
+        onAddTopic={openAddTopic}
       />
 
       <TopicDrawer
@@ -272,30 +248,40 @@ const estimatedHours = examTopics.reduce(
           nextOrder={subjects.length}
           onClose={() => setShowAddSubject(false)}
           onAdded={(subject) => {
-            setSubjects((prev) => [...prev, { ...subject, topics: [] }]);
-            setActiveSubjectId(subject.id);
+            const subjectWithTopics = { ...subject, topics: [] };
+            setSubjects((prev) => [...prev, subjectWithTopics]);
+            setSelectedSubjectForTopic(subjectWithTopics);
             setShowAddSubject(false);
           }}
         />
       )}
 
-      {showAddTopic && selectedSubject && (
+      {showAddTopic && selectedSubjectForTopic && (
         <AddTopicDialog
-          subjectId={selectedSubject.id}
-          subjectName={selectedSubject.name}
+          subjectId={selectedSubjectForTopic.id}
+          subjectName={selectedSubjectForTopic.name}
           userId={userId}
-          nextOrder={selectedSubject.topics?.length ?? 0}
+          nextOrder={selectedSubjectForTopic.topics?.length ?? 0}
           onClose={() => setShowAddTopic(false)}
           onAdded={(topics) => {
             setSubjects((prev) =>
               prev.map((subject) =>
-                subject.id === selectedSubject.id
+                subject.id === selectedSubjectForTopic.id
                   ? {
                       ...subject,
                       topics: [...(subject.topics ?? []), ...topics],
                     }
                   : subject
               )
+            );
+
+            setSelectedSubjectForTopic((prev: any) =>
+              prev?.id === selectedSubjectForTopic.id
+                ? {
+                    ...prev,
+                    topics: [...(prev.topics ?? []), ...topics],
+                  }
+                : prev
             );
 
             setShowAddTopic(false);
