@@ -4,123 +4,113 @@ import { BookOpen, CheckCircle2 } from "lucide-react";
 
 import {
   Card,
-  CardContent,
   CardHeader,
   CardTitle,
+  CardContent,
 } from "@/components/ui/card";
 
 import { Progress } from "@/components/ui/progress";
 
 interface Props {
-  stats: {
+  summary: {
     studyMinutes: number;
-    studyGoalMinutes: number;
     completedTasks: number;
-    taskGoal: number;
+  };
+
+  goals: {
+    studyGoalMinutes: number;
+    studyGoalPercent: number;
+    dailyTaskGoal: number;
+    taskGoalPercent: number;
   };
 }
 
-export default function DailyGoalsCard({ stats }: Props) {
-  const studyPercent =
-    stats.studyGoalMinutes > 0
-      ? Math.min(
-          100,
-          Math.round((stats.studyMinutes / stats.studyGoalMinutes) * 100)
-        )
-      : 0;
-
-  const taskPercent =
-    stats.taskGoal > 0
-      ? Math.min(
-          100,
-          Math.round((stats.completedTasks / stats.taskGoal) * 100)
-        )
-      : 0;
-
+export default function DailyGoalsCard({
+  summary,
+  goals,
+}: Props) {
   return (
     <Card className="bg-[#0F172A] border-white/10">
       <CardHeader>
-        <CardTitle className="text-white text-lg">
+        <CardTitle className="text-white">
           Today's Goals
         </CardTitle>
       </CardHeader>
 
       <CardContent className="space-y-8">
 
-        {/* Study Goal */}
-
         <div className="space-y-3">
 
-          <div className="flex items-center justify-between">
+          <div className="flex justify-between">
 
             <div className="flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-violet-400" />
-
-              <span className="text-sm font-medium text-slate-200">
+              <span className="text-white">
                 Study Goal
               </span>
             </div>
 
-            <span className="text-sm font-semibold text-white">
-              {stats.studyMinutes}/{stats.studyGoalMinutes} min
+            <span className="text-white">
+              {summary.studyMinutes}/{goals.studyGoalMinutes} min
             </span>
 
           </div>
 
-          <Progress
-            value={studyPercent}
-            className="h-3"
-          />
+          <Progress value={goals.studyGoalPercent} />
 
           <div className="flex justify-between text-xs text-slate-400">
-            <span>{studyPercent}% completed</span>
+
+            <span>
+              {goals.studyGoalPercent}% completed
+            </span>
 
             <span>
               {Math.max(
                 0,
-                stats.studyGoalMinutes - stats.studyMinutes
+                goals.studyGoalMinutes -
+                  summary.studyMinutes
               )}{" "}
               min left
             </span>
+
           </div>
 
         </div>
 
-        {/* Task Goal */}
-
         <div className="space-y-3">
 
-          <div className="flex items-center justify-between">
+          <div className="flex justify-between">
 
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-
-              <span className="text-sm font-medium text-slate-200">
+              <CheckCircle2 className="w-5 h-5 text-green-400" />
+              <span className="text-white">
                 Task Goal
               </span>
             </div>
 
-            <span className="text-sm font-semibold text-white">
-              {stats.completedTasks}/{stats.taskGoal}
+            <span className="text-white">
+              {summary.completedTasks}/{goals.dailyTaskGoal}
             </span>
 
           </div>
 
-          <Progress
-            value={taskPercent}
-            className="h-3"
-          />
+          <Progress value={goals.taskGoalPercent} />
 
           <div className="flex justify-between text-xs text-slate-400">
-            <span>{taskPercent}% completed</span>
+
+            <span>
+              {goals.taskGoalPercent}% completed
+            </span>
 
             <span>
               {Math.max(
                 0,
-                stats.taskGoal - stats.completedTasks
+                goals.dailyTaskGoal -
+                  summary.completedTasks
               )}{" "}
               tasks left
             </span>
+
           </div>
 
         </div>

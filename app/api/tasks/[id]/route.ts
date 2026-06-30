@@ -25,18 +25,19 @@ export async function PATCH(
     const body = await req.json();
 
     const task = await prisma.task.update({
-      where: {
-        id,
-        userId: user.id,
-      },
-      data: {
-        completed: body.completed,
-      },
-      include: {
-        subject: true,
-        topic: true,
-      },
-    });
+  where: {
+    id,
+    userId: user.id,
+  },
+  data: {
+    completed: body.completed,
+    completedAt: body.completed ? new Date() : null,
+  },
+  include: {
+    subject: true,
+    topic: true,
+  },
+});
     if (body.completed === true) {
   const nextStreak = calculateNextStreak(
     user.streakCount,

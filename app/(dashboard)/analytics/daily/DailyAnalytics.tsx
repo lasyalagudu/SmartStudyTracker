@@ -18,12 +18,17 @@ export default function DailyAnalytics({ data }: Props) {
   return (
     <AnalyticsShell>
 
-      <SummaryCards stats={data.stats} />
+        <SummaryCards
+    summary={data.summary}
+    goals={data.goals}
+  />
 
       <div className="grid gap-6 xl:grid-cols-2">
 
-        <DailyGoalsCard stats={data.stats} />
-
+    <DailyGoalsCard
+  summary={data.summary}
+  goals={data.goals}
+/>
         <SubjectStudyCard
           subjects={data.subjectStudyTime}
         />

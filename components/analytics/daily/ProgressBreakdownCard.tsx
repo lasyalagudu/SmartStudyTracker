@@ -18,10 +18,10 @@ import { Progress } from "@/components/ui/progress";
 
 interface Props {
   progress: {
-    theoryCompleted: number;
-    problemsCompleted: number;
-    pyqsCompleted: number;
-    revisionCompleted: number;
+    theory: number;
+    problems: number;
+    pyqs: number;
+    revision: number;
   };
 }
 
@@ -31,25 +31,25 @@ export default function ProgressBreakdownCard({
   const items = [
     {
       title: "Theory",
-      value: progress.theoryCompleted,
+      value: progress.theory,
       icon: BookOpen,
       color: "text-blue-400",
     },
     {
       title: "Problems",
-      value: progress.problemsCompleted,
+      value: progress.problems,
       icon: Brain,
       color: "text-emerald-400",
     },
     {
       title: "PYQs",
-      value: progress.pyqsCompleted,
+      value: progress.pyqs,
       icon: FileQuestion,
       color: "text-amber-400",
     },
     {
       title: "Revision",
-      value: progress.revisionCompleted,
+      value: progress.revision,
       icon: RotateCw,
       color: "text-violet-400",
     },
