@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { Loader2, AlertCircle } from "lucide-react";
 import type { SubjectAnalyticsData, SubjectAnalyticsItem } from "@/types";
 import SubjectSummaryCards from "./SubjectSummaryCards";
+import WeakTopicsCard from "./WeakTopicsCard";
+import TopicHealthTable from "./TopicHealthTable";
+import SubjectInsight from "./SubjectInsight";
 
 export default function SubjectAnalyticsClient() {
   const [data, setData] = useState<SubjectAnalyticsData | null>(null);
@@ -104,10 +107,22 @@ export default function SubjectAnalyticsClient() {
       )}
 
       {selectedSubject && (
-        <SubjectProgressBreakdown
-          totalTopics={selectedSubject.totalTopics}
-          breakdown={selectedSubject.breakdown}
-        />
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+  <SubjectProgressBreakdown
+    totalTopics={selectedSubject.totalTopics}
+    breakdown={selectedSubject.breakdown}
+  />
+
+  <WeakTopicsCard
+    topics={selectedSubject.weakTopics}
+  />
+
+  {selectedSubject && (
+  <TopicHealthTable topics={selectedSubject.topicHealth} />
+)}
+
+{selectedSubject && <SubjectInsight subject={selectedSubject} />}
+</div>
       )}
     </div>
   );

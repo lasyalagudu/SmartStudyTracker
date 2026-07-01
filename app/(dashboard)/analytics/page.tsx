@@ -8,7 +8,7 @@ import AnalyticsTabs from "@/components/analytics/layout/AnalyticsTabs";
 import MonthlyAnalyticsClient from "@/components/analytics/monthly/MonthlyAnalyticsClient";
 import WeeklyAnalyticsClient from "@/components/analytics/weekly/WeeklyAnalyticsClient";
 import DailyAnalyticsClient from "./daily/DailyAnalyticsClient";
-
+import SubjectAnalyticsClient from "@/components/analytics/subjects/SubjectAnalyticsClient";
 type AnalyticsTab = "Overview" | "Daily" | "Weekly" | "Monthly" | "Subjects";
 
 export default function AnalyticsPage() {
@@ -51,15 +51,11 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {activeTab === "Subjects" && (
-        <div className="bg-[#0A0F1E] border border-white/8 rounded-2xl p-10 text-center">
-          <h2 className="text-white text-xl font-semibold">
-            Subject Analytics
-          </h2>
+     {activeTab === "Subjects" && (
+  <SubjectAnalyticsClient />
+)}
+        
 
-          <p className="text-slate-500 mt-2">Coming in the next sprint.</p>
-        </div>
-      )}
     </AnalyticsShell>
   );
 }
