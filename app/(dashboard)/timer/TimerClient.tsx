@@ -51,7 +51,13 @@ const FOCUS_DURATIONS = [
 type Tab = "POMODORO" | "FOCUS_SESSION" | "CUSTOM";
 type PomodoroMode = (typeof POMODORO_MODES)[number];
 
-export default function TimerClient({ subjects }: { subjects: any[] }) {
+export default function TimerClient({
+  subjects,
+  dailyGoalMinutes = 360,
+}: {
+  subjects: any[];
+  dailyGoalMinutes?: number;
+}) {
   const [tab, setTab] = useState<Tab>("POMODORO");
   const [pomodoroMode, setPomodoroMode] = useState<PomodoroMode>(
     POMODORO_MODES[0],
@@ -68,6 +74,12 @@ export default function TimerClient({ subjects }: { subjects: any[] }) {
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const sessionStartRef = useRef<Date | null>(null);
+  // Keep a ref to totalSeconds so handleComplete always reads the latest value
+  // even when called from inside the interval callback (stale-closure fix).
+  const totalSecondsRef = useRef(totalSeconds);
+  useEffect(() => {
+    totalSecondsRef.current = totalSeconds;
+  }, [totalSeconds]);
 
   const currentColor =
     tab === "POMODORO"
@@ -147,13 +159,16 @@ export default function TimerClient({ subjects }: { subjects: any[] }) {
     stopTimer();
     setCompleted((count) => count + 1);
 
+    // Use the ref so we always read the current duration, not a stale closure value.
+    const durationMinutes = Math.round(totalSecondsRef.current / 60);
+
     const isStudySession =
       tab === "FOCUS_SESSION" ||
       tab === "CUSTOM" ||
       (tab === "POMODORO" && pomodoroMode.id === "POMODORO_FOCUS");
 
     if (isStudySession) {
-      setTodayMinutes((prev) => prev + currentDurationMinutes);
+      setTodayMinutes((prev) => prev + durationMinutes);
     }
 
     toast.success(
@@ -163,22 +178,29 @@ export default function TimerClient({ subjects }: { subjects: any[] }) {
     );
 
     if (isStudySession && sessionStartRef.current) {
-      await fetch("/api/timer/session", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          subjectId: selectedSubjectId || null,
-          durationMinutes: currentDurationMinutes,
-          sessionType: "FOCUS",
-          completed: true,
-          startedAt: sessionStartRef.current.toISOString(),
-          endedAt: new Date().toISOString(),
-        }),
-      });
+      try {
+        const res = await fetch("/api/timer/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subjectId: selectedSubjectId || null,
+            durationMinutes,
+            sessionType: "FOCUS",
+            completed: true,
+            startedAt: sessionStartRef.current.toISOString(),
+            endedAt: new Date().toISOString(),
+          }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          toast.error(data.error || "Session saved locally but failed to sync");
+        }
+      } catch {
+        toast.error("Network error — session could not be saved");
+      }
     }
-  }, [tab, pomodoroMode.id, selectedSubjectId, currentDurationMinutes]);
+  }, [tab, pomodoroMode.id, selectedSubjectId]);
 
   useEffect(() => {
     if (!running) return;
@@ -219,11 +241,15 @@ export default function TimerClient({ subjects }: { subjects: any[] }) {
 
   const circumference = 2 * Math.PI * 120;
   const dashOffset = circumference * (1 - progress / 100);
-  const dailyGoalMinutes = 360;
   const todayProgress = Math.min(
     100,
     Math.round((todayMinutes / dailyGoalMinutes) * 100),
   );
+
+  const goalHours = Math.floor(dailyGoalMinutes / 60);
+  const goalMins = dailyGoalMinutes % 60;
+  const goalLabel =
+    goalMins > 0 ? `${goalHours}h ${goalMins}m` : `${goalHours}h`;
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -511,7 +537,7 @@ export default function TimerClient({ subjects }: { subjects: any[] }) {
           </div>
 
           <p className="text-xs text-slate-500 mt-2">
-            Goal: 6h · {todayProgress}% completed
+            Goal: {goalLabel} · {todayProgress}% completed
           </p>
         </div>
       </div>

@@ -16,7 +16,7 @@ import TodaysTasks from "@/components/dashboard/TodaysTasks";
 import StudyProgress from "@/components/dashboard/StudyProgress";
 import RevisionDue from "@/components/dashboard/RevisionDue";
 import StartNextSession from "@/components/dashboard/StartNextSession";
-import LogStudyDialog from "@/components/dashboard/LogStudyDiallog";
+import LogStudyDialog from "@/components/dashboard/LogStudyDialog";
 
 export default function DashboardClient({
   profile,

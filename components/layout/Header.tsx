@@ -1,30 +1,17 @@
-import { currentUser } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/prisma";
-import  HeaderClient from "./HeaderClient";
+/**
+ * Header — server component.
+ *
+ * Uses the per-request cached helper so DB data is shared with whichever
+ * page also calls getCachedUser() in the same render, eliminating duplicate
+ * Prisma queries on every navigation.
+ */
+import { getCachedUser } from "@/lib/getUser";
+import HeaderClient from "./HeaderClient";
 
 export default async function Header() {
-  const clerkUser = await currentUser();
+  const user = await getCachedUser();
 
-  if (!clerkUser) {
-    return null;
-  }
-
-  const user = await prisma.user.findUnique({
-    where: {
-      clerkId: clerkUser.id,
-    },
-    include: {
-      exams: {
-        orderBy: {
-          createdAt: "asc",
-        },
-      },
-    },
-  });
-
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   const activeExam =
     user.exams.find((exam) => exam.isActive) ?? user.exams[0] ?? null;

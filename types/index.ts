@@ -1,108 +1,128 @@
+/**
+ * Application-level types aligned with the Prisma schema (camelCase).
+ *
+ * Previously these used snake_case field names (user_id, theory_done, etc.)
+ * which didn't match what Prisma actually returns, causing silent runtime
+ * mismatches throughout the codebase.
+ */
+
 export interface Profile {
   id: string;
+  clerkId: string;
   email: string;
   name: string | null;
-  onboarding_completed: boolean;
-  streak_count: number;
-  last_study_date: string | null;
-  created_at: string;
-  updated_at: string;
+  onboardingCompleted: boolean;
+  streakCount: number;
+  dailyStudyGoalMinutes: number;
+  dailyTaskGoal: number;
+  lastStudyDate: Date | string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 export interface Exam {
   id: string;
-  user_id: string;
+  userId: string;
   name: string;
-  target_date: string | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  targetDate: Date | string | null;
+  isActive: boolean;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 export interface Subject {
   id: string;
-  exam_id: string;
-  user_id: string;
+  examId: string;
   name: string;
   color: string;
   order: number;
   topics?: Topic[];
-  created_at: string;
-  updated_at: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 export interface Topic {
   id: string;
-  subject_id: string;
-  user_id: string;
+  subjectId: string;
   name: string;
   order: number;
-  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
-  theory_done: boolean;
-  problems_done: boolean;
-  pyqs_done: boolean;
-  revision_done: boolean;
+  status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+  theoryDone: boolean;
+  problemsDone: boolean;
+  pyqsDone: boolean;
+  revisionDone: boolean;
   mastered: boolean;
-  created_at: string;
-  updated_at: string;
+  difficulty: "EASY" | "MEDIUM" | "HARD";
+  priority: "LOW" | "MEDIUM" | "HIGH";
+  estimatedHours: number;
+  confidence: number;
+  completedAt: Date | string | null;
+  lastRevisedAt: Date | string | null;
+  notes: string | null;
+  doubts: string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 export interface Task {
   id: string;
-  user_id: string;
-  exam_id: string | null;
-  subject_id: string | null;
-  topic_id: string | null;
+  userId: string;
+  examId: string | null;
+  subjectId: string | null;
+  topicId: string | null;
   title: string;
   description: string | null;
-  due_date: string | null;
+  dueDate: Date | string | null;
   completed: boolean;
-  priority: 'LOW' | 'MEDIUM' | 'HIGH';
-  created_at: string;
-  updated_at: string;
-  subject?: Subject;
+  completedAt: Date | string | null;
+  priority: "LOW" | "MEDIUM" | "HIGH";
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  subject?: Subject | null;
+  topic?: Topic | null;
 }
 
 export interface TimerSession {
   id: string;
-  user_id: string;
-  subject_id: string | null;
-  topic_id: string | null;
-  duration_minutes: number;
-  session_type: 'FOCUS' | 'SHORT_BREAK' | 'LONG_BREAK';
+  userId: string;
+  examId: string | null;
+  subjectId: string | null;
+  topicId: string | null;
+  durationMinutes: number;
+  sessionType: "FOCUS" | "SHORT_BREAK" | "LONG_BREAK";
   completed: boolean;
-  started_at: string;
-  ended_at: string | null;
-  created_at: string;
+  startedAt: Date | string;
+  endedAt: Date | string | null;
+  createdAt: Date | string;
 }
 
 export interface Mistake {
   id: string;
-  user_id: string;
-  subject_id: string | null;
-  topic_id: string | null;
+  userId: string;
+  subjectId: string | null;
+  topicId: string | null;
   title: string;
   description: string | null;
-  mistake_type: 'CONCEPTUAL' | 'CALCULATION' | 'CARELESS' | 'OTHER';
+  mistakeType: "CONCEPTUAL" | "CALCULATION" | "CARELESS" | "OTHER";
   resolved: boolean;
-  created_at: string;
-  updated_at: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  subject?: Subject | null;
+  topic?: Topic | null;
 }
 
 export interface MonthlyAnalytics {
   exam: {
     id: string;
     name: string;
-    targetDate?: string;
+    targetDate?: Date | string | null;
   };
-
   range: {
     year: number;
     month: number;
     monthStart: string;
     monthEnd: string;
   };
-
   stats: {
     totalMinutes: number;
     totalSessions: number;
@@ -115,11 +135,8 @@ export interface MonthlyAnalytics {
     completedTopics: number;
     topicsCompletedThisMonth: number;
   };
-
   dailyMinutes: number[];
-
   weeklyTrend: number[];
-
   subjectDistribution: {
     id: string;
     name: string;
@@ -127,21 +144,24 @@ export interface MonthlyAnalytics {
     minutes: number;
     sessions: number;
   }[];
-
-  bestSubject: any;
-  weakSubject: any;
-
+  bestSubject: SubjectStudySummary | null;
+  weakSubject: SubjectStudySummary | null;
   achievements: {
     title: string;
     unlocked: boolean;
   }[];
-
   comparison: {
     studyTimeChange: number;
     sessionsChange: number;
   };
-
   insight: string;
+}
+
+export interface SubjectStudySummary {
+  id: string;
+  name: string;
+  color: string;
+  minutes: number;
 }
 
 export interface SubjectAnalyticsTopic {
@@ -155,8 +175,8 @@ export interface SubjectAnalyticsTopic {
   health: "EXCELLENT" | "GOOD" | "NEEDS_REVISION" | "WEAK" | "IN_PROGRESS";
   nextAction: string;
   estimatedHours: number;
-  lastRevisedAt: string | null;
-  completedAt: string | null;
+  lastRevisedAt: Date | string | null;
+  completedAt: Date | string | null;
 }
 
 export interface SubjectAnalyticsItem {
@@ -187,4 +207,3 @@ export interface SubjectAnalyticsData {
   };
   subjects: SubjectAnalyticsItem[];
 }
-

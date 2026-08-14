@@ -22,5 +22,10 @@ export default async function TimerPage() {
     },
   });
 
-  return <TimerClient subjects={exam?.subjects ?? []} />;
+  return (
+    <TimerClient
+      subjects={exam?.subjects ?? []}
+      dailyGoalMinutes={user.dailyStudyGoalMinutes ?? 360}
+    />
+  );
 }

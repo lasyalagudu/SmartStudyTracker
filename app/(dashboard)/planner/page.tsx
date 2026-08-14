@@ -42,31 +42,39 @@ export default function PlannerPage() {
     useState<"LOW" | "MEDIUM" | "HIGH">("MEDIUM");
   const [adding, setAdding] = useState(false);
 
+  // Re-fetch whenever the selected date changes.
+  // Previously the dep array was [] so navigating to a different day would
+  // show stale tasks from the first load.
   useEffect(() => {
     load(selectedDate);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate]);
 
   async function load(date: Date) {
     setLoading(true);
-    const res = await fetch(`/api/planner?date=${dateStr(date)}`);
-    const data = await res.json();
+    try {
+      const res = await fetch(`/api/planner?date=${dateStr(date)}`);
+      const data = await res.json();
 
-    if (!res.ok) {
-      toast.error(data.error || "Failed to load planner");
+      if (!res.ok) {
+        toast.error(data.error || "Failed to load planner");
+        return;
+      }
+
+      setUserId(data.userId);
+      setExamId(data.examId);
+      setSubjects(data.subjects ?? []);
+      setTasks(data.tasks ?? []);
+    } catch {
+      toast.error("Network error — could not load planner");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setUserId(data.userId);
-    setExamId(data.examId);
-    setSubjects(data.subjects ?? []);
-    setTasks(data.tasks ?? []);
-    setLoading(false);
   }
 
-  async function changeDate(d: Date) {
+  // Just update the date; the useEffect above will trigger the fetch.
+  function changeDate(d: Date) {
     setSelectedDate(d);
-    await load(d);
   }
 
   async function toggleTask(task: Task) {

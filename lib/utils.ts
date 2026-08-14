@@ -21,14 +21,23 @@ export function daysUntil(date: string | Date) {
   return Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+// Field names updated to match Prisma camelCase output.
+// Previously used snake_case (theory_done, problems_done, etc.) which no
+// longer exist — they were always camelCase in the DB schema.
 export function getTopicCompletion(topic: {
-  theory_done: boolean;
-  problems_done: boolean;
-  pyqs_done: boolean;
-  revision_done: boolean;
+  theoryDone: boolean;
+  problemsDone: boolean;
+  pyqsDone: boolean;
+  revisionDone: boolean;
   mastered: boolean;
 }) {
-  const checks = [topic.theory_done, topic.problems_done, topic.pyqs_done, topic.revision_done, topic.mastered];
+  const checks = [
+    topic.theoryDone,
+    topic.problemsDone,
+    topic.pyqsDone,
+    topic.revisionDone,
+    topic.mastered,
+  ];
   const done = checks.filter(Boolean).length;
   return Math.round((done / checks.length) * 100);
 }
