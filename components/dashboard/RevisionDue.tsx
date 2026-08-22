@@ -9,7 +9,7 @@ interface Props {
 export default function RevisionDue({ subjects }: Props) {
   const revisionTopics = subjects.flatMap((s) =>
     (s.topics ?? [])
-      .filter((t) => t.theory_done && !t.revision_done)
+      .filter((t) => t.theoryDone && !t.revisionDone)
       .slice(0, 2)
       .map((t) => ({ ...t, subjectName: s.name, color: s.color }))
   ).slice(0, 4);

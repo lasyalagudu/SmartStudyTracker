@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import { currentUser } from "@clerk/nextjs/server";
+
+export const metadata: Metadata = {
+  title: "Settings | SmartStudy Tracker",
+  description: "Manage your exam setup, study goals, profile, and notification preferences.",
+};
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import SettingsClient from "./SettingsClient";

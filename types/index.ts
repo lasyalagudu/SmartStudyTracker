@@ -162,6 +162,7 @@ export interface SubjectStudySummary {
   name: string;
   color: string;
   minutes: number;
+  sessions: number;
 }
 
 export interface SubjectAnalyticsTopic {

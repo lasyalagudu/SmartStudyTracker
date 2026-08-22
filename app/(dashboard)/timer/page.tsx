@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import { currentUser } from "@clerk/nextjs/server";
+
+export const metadata: Metadata = {
+  title: "Study Timer | SmartStudy Tracker",
+  description: "Pomodoro and focus timer with subject tracking to log every study session.",
+};
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import TimerClient from "./TimerClient";

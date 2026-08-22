@@ -1,4 +1,7 @@
 "use client";
+// Note: metadata cannot be exported from client components.
+// The title for this page is set in app/(dashboard)/analytics/layout.tsx.
+// For this client page, title is handled by the root layout default.
 
 import { useEffect, useState } from "react";
 import type { Subject, Task } from "@/types";

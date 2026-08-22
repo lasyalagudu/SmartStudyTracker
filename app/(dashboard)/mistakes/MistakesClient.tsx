@@ -28,11 +28,20 @@ const TYPE_COLORS = {
 export default function MistakesClient({
   mistakes: initialMistakes,
   subjects,
+  totalCount = 0,
+  pageSize = 50,
 }: {
   mistakes: any[];
   subjects: any[];
+  totalCount?: number;
+  pageSize?: number;
 }) {
   const [mistakes, setMistakes] = useState(initialMistakes);
+  const [cursor, setCursor] = useState<string | null>(
+    initialMistakes.length > 0 ? initialMistakes[initialMistakes.length - 1].id : null
+  );
+  const [loadingMore, setLoadingMore] = useState(false);
+  const hasMore = mistakes.length < totalCount;
   const [showForm, setShowForm] = useState(false);
   const [editingMistake, setEditingMistake] = useState<any | null>(null);
 
@@ -142,6 +151,22 @@ export default function MistakesClient({
 
     setMistakes((prev) => prev.filter((m) => m.id !== id));
     toast.success("Mistake deleted");
+  }
+
+  async function loadMore() {
+    if (!cursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await fetch(`/api/mistakes?cursor=${cursor}&take=${pageSize}`);
+      const data = await res.json();
+      if (!res.ok) { toast.error("Failed to load more"); return; }
+      setMistakes((prev) => [...prev, ...data.mistakes]);
+      setCursor(data.nextCursor);
+    } catch {
+      toast.error("Network error loading more mistakes");
+    } finally {
+      setLoadingMore(false);
+    }
   }
 
   const filteredMistakes = useMemo(() => {
@@ -405,6 +430,24 @@ export default function MistakesClient({
           </div>
         ))}
       </div>
+
+      {/* Load more — shown when there are more mistakes in DB than currently loaded */}
+      {hasMore && (
+        <div className="text-center pt-2">
+          <button
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="inline-flex items-center gap-2 px-6 py-2.5 border border-white/10 text-slate-300 rounded-xl text-sm hover:bg-white/5 hover:border-violet-500/30 transition-colors disabled:opacity-50"
+          >
+            {loadingMore ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : null}
+            {loadingMore
+              ? "Loading…"
+              : `Load more (${totalCount - mistakes.length} remaining)`}
+          </button>
+        </div>
+      )}
 
       {showForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">

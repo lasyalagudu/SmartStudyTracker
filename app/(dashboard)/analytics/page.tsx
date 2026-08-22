@@ -22,9 +22,13 @@ export default function AnalyticsPage() {
       <AnalyticsTabs activeTab={activeTab} onChange={setActiveTab} />
 
       {activeTab === "Overview" && (
-        <div className="bg-[#0A0F1E] border border-white/8 rounded-2xl p-10 text-center">
-          <h2 className="text-white text-xl font-semibold">Overview Analytics</h2>
-          <p className="text-slate-500 mt-2">Coming in the next sprint.</p>
+        <div className="bg-[#0A0F1E] border border-white/8 rounded-2xl p-12 text-center">
+          <div className="text-5xl mb-4">🔭</div>
+          <h2 className="text-white text-xl font-semibold mb-2">Overview Analytics</h2>
+          <p className="text-slate-500 text-sm max-w-sm mx-auto">
+            A unified view across all subjects, sessions, and goals is coming soon.
+            Use the Daily, Weekly, Monthly, and Subjects tabs in the meantime.
+          </p>
         </div>
       )}
 

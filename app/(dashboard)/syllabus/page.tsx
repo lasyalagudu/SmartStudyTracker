@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import { currentUser } from "@clerk/nextjs/server";
+
+export const metadata: Metadata = {
+  title: "Syllabus Tracker | SmartStudy Tracker",
+  description: "Track theory, problems, PYQs, and revision status for every topic in your syllabus.",
+};
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import SyllabusClient from "./SyllabusClient";

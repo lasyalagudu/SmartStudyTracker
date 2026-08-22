@@ -1,7 +1,7 @@
 "use client";
 import SubjectProgressBreakdown from "./SubjectProgressBreakdown";
 import { useEffect, useState } from "react";
-import { Loader2, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import type { SubjectAnalyticsData, SubjectAnalyticsItem } from "@/types";
 import SubjectSummaryCards from "./SubjectSummaryCards";
 import WeakTopicsCard from "./WeakTopicsCard";
@@ -39,8 +39,25 @@ export default function SubjectAnalyticsClient() {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
+      <div className="space-y-6 animate-pulse">
+        {/* Subject tab strip */}
+        <div className="flex gap-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-9 w-24 rounded-xl bg-white/5 border border-white/8 flex-shrink-0" />
+          ))}
+        </div>
+        {/* Summary cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-24 rounded-2xl bg-white/5 border border-white/8" />
+          ))}
+        </div>
+        {/* Detail grid */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-48 rounded-2xl bg-white/5 border border-white/8" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -61,12 +78,19 @@ export default function SubjectAnalyticsClient() {
 
   if (data.subjects.length === 0) {
     return (
-      <div className="bg-[#0A0F1E] border border-white/8 rounded-2xl p-10 text-center">
-        <div className="text-4xl mb-3">📚</div>
-        <h3 className="text-white font-semibold">No subjects found</h3>
-        <p className="text-sm text-slate-500 mt-1">
-          Add subjects in Syllabus Tracker to see analytics.
+      <div className="bg-[#0A0F1E] border border-white/8 rounded-2xl p-12 text-center">
+        <div className="text-5xl mb-4">📚</div>
+        <h3 className="text-white font-semibold text-lg mb-2">No subjects added yet</h3>
+        <p className="text-sm text-slate-500 max-w-sm mx-auto mb-6">
+          Add subjects and topics to your syllabus first. Subject analytics
+          will populate automatically as you study and track progress.
         </p>
+        <a
+          href="/syllabus"
+          className="inline-flex items-center gap-2 px-6 py-2.5 bg-violet-600 text-white rounded-xl text-sm font-medium hover:bg-violet-500 transition-colors"
+        >
+          Go to Syllabus Tracker →
+        </a>
       </div>
     );
   }
