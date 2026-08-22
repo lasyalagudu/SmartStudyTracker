@@ -83,9 +83,10 @@ export default function DailyGoalsCard({
 
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-5 h-5 text-green-400" />
-              <span className="text-white">
-                Task Goal
-              </span>
+              <div>
+                <span className="text-white">Task Goal</span>
+                <p className="text-xs text-slate-500">Target set in Settings</p>
+              </div>
             </div>
 
             <span className="text-white">
@@ -108,7 +109,7 @@ export default function DailyGoalsCard({
                 goals.dailyTaskGoal -
                   summary.completedTasks
               )}{" "}
-              tasks left
+              more to hit goal
             </span>
 
           </div>
