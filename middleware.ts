@@ -11,6 +11,12 @@ const isProtectedRoute = createRouteMatcher([
   "/mistakes(.*)",
   "/settings(.*)",
   "/pro(.*)",
+  "/mentor-connect(.*)",
+  "/mentor-dashboard(.*)",
+  "/mentor-studio(.*)",
+  "/admin(.*)",
+  // sso-callback must be protected so currentUser() works inside it
+  "/sso-callback(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

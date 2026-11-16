@@ -14,17 +14,26 @@ model User {
   email                 String    @unique
   name                  String?
   onboardingCompleted   Boolean   @default(false)
+  /// True when the user signed up via /join-as-mentor.
+  /// Allows skipping the student exam wizard without polluting onboardingCompleted.
+  /// Never grants any permissions — status is determined by MentorProfile.status only.
+  mentorSignupIntent    Boolean   @default(false)
   streakCount           Int       @default(0)
   dailyStudyGoalMinutes Int       @default(360)
   dailyTaskGoal         Int       @default(5)
   lastStudyDate         DateTime?
+  /// ADMIN role — set only via direct DB update, never via any client API
+  role                  UserRole  @default(STUDENT)
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
-  exams         Exam[]
-  tasks         Task[]
-  timerSessions TimerSession[]
-  mistakes      Mistake[]
+  exams           Exam[]
+  tasks           Task[]
+  timerSessions   TimerSession[]
+  mistakes        Mistake[]
+  mentorProfile   MentorProfile?
+  studentBookings MentorBooking[] @relation("StudentBookings")
+  studentReviews  MentorReview[]  @relation("StudentReviews")
 }
 
 model Exam {
@@ -187,6 +196,74 @@ model Mistake {
   @@index([resolved])
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Exam Catalog  (library layer — independent of any user)
+//
+// ExamCatalog  →  CatalogSubject  →  CatalogTopic
+//
+// This is the source-of-truth for verified exam syllabi.
+// When a student onboards with a known exam, their Exam/Subject/Topic rows
+// are seeded from these catalog rows.  Adding a new exam only requires
+// inserting rows here — zero code changes.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ExamCatalog {
+  id          String   @id @default(uuid())
+  /// Stable short key used as a lookup handle, e.g. "GATE_CSE", "JEE", "NEET"
+  slug        String   @unique
+  /// Human-readable name shown in UI, e.g. "GATE CSE 2026"
+  label       String
+  /// One-line description shown below the label
+  description String   @default("")
+  /// Emoji or short icon hint (stored as text so no font dependency)
+  icon        String   @default("📚")
+  /// Whether this template is shown to new users (false = archived/draft)
+  isActive    Boolean  @default(true)
+  /// Derived: sum of all CatalogTopic.estimatedHours — recomputed on seed/update
+  totalHours  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subjects CatalogSubject[]
+
+  @@index([slug])
+  @@index([isActive])
+}
+
+model CatalogSubject {
+  id        String   @id @default(uuid())
+  examId    String
+  name      String
+  color     String   @default("#7C3AED")
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  exam   ExamCatalog    @relation(fields: [examId], references: [id], onDelete: Cascade)
+  topics CatalogTopic[]
+
+  @@index([examId])
+}
+
+model CatalogTopic {
+  id             String     @id @default(uuid())
+  subjectId      String
+  name           String
+  order          Int        @default(0)
+  estimatedHours Int        @default(1)
+  priority       Priority   @default(MEDIUM)
+  difficulty     Difficulty @default(MEDIUM)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  subject CatalogSubject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@index([subjectId])
+  @@index([priority])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 enum TopicStatus {
   NOT_STARTED
   IN_PROGRESS
@@ -216,4 +293,264 @@ enum Difficulty {
   EASY
   MEDIUM
   HARD
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mentor Connect — new enums
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  STUDENT
+  ADMIN
+}
+
+enum MentorStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum AchievementStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum BookingStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  PAYMENT_FAILED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  CREATED
+  CAPTURED
+  FAILED
+  REFUNDED
+}
+
+enum DayOfWeek {
+  MON
+  TUE
+  WED
+  THU
+  FRI
+  SAT
+  SUN
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mentor Connect — models
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// One-to-one extension of User — a student becomes a mentor by creating this.
+model MentorProfile {
+  id              String       @id @default(uuid())
+  userId          String       @unique
+  /// Shown as the card headline, e.g. "GATE CSE AIR 142 | IIT Hyderabad"
+  headline        String       @default("")
+  about           String       @default("")
+  photoUrl        String?
+  /// Primary exam this mentor specialises in (matches Exam.name / catalog slug)
+  primaryExam     String       @default("")
+  college         String       @default("")
+  languages       String[]     @default([])
+  /// Years of mentoring experience
+  experienceYears Int          @default(0)
+  linkedinUrl     String?
+  status          MentorStatus @default(DRAFT)
+  /// Admin note on rejection or suspension
+  adminNote       String?
+  /// Average of all MentorReview.rating — recomputed on each new review
+  avgRating       Float        @default(0)
+  totalReviews    Int          @default(0)
+  totalSessions   Int          @default(0)
+  /// Total earnings in paise (integer, divide by 100 for ₹)
+  totalEarnings   Int          @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exams         MentorExam[]
+  achievements  MentorAchievement[]
+  sessions      MentorSession[]
+  availability  MentorAvailability[]
+  blockedDates  MentorBlockedDate[]
+  bookings      MentorBooking[]
+  reviews       MentorReview[]
+
+  @@index([status])
+  @@index([primaryExam])
+  @@index([avgRating])
+}
+
+/// A mentor can list multiple exams/ranks they cleared.
+model MentorExam {
+  id          String   @id @default(uuid())
+  mentorId    String
+  examName    String
+  examYear    Int
+  rank        String?  // AIR or percentile, stored as text for flexibility
+  score       String?
+  college     String?
+  /// Short description shown on card
+  description String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  mentor MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+
+  @@index([mentorId])
+}
+
+/// Certificates, rank cards, offer letters — uploaded to Supabase Storage.
+model MentorAchievement {
+  id          String            @id @default(uuid())
+  mentorId    String
+  title       String
+  description String            @default("")
+  /// Supabase Storage public URL
+  fileUrl     String?
+  fileType    String?           // "pdf" | "image"
+  status      AchievementStatus @default(PENDING)
+  adminNote   String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  mentor MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+
+  @@index([mentorId])
+  @@index([status])
+}
+
+/// A session offering the mentor creates (e.g. "1-hour mock test review — ₹500").
+model MentorSession {
+  id           String   @id @default(uuid())
+  mentorId     String
+  title        String
+  description  String   @default("")
+  /// Duration in minutes
+  durationMins Int
+  /// Price in paise (₹500 = 50000)
+  priceInPaise Int
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  mentor   MentorProfile  @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  bookings MentorBooking[]
+
+  @@index([mentorId])
+  @@index([isActive])
+}
+
+/// Weekly recurring availability slots the mentor sets.
+model MentorAvailability {
+  id         String    @id @default(uuid())
+  mentorId   String
+  dayOfWeek  DayOfWeek
+  /// "HH:MM" 24-hour format
+  startTime  String
+  endTime    String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  mentor MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+
+  @@unique([mentorId, dayOfWeek, startTime])
+  @@index([mentorId])
+}
+
+/// One-off dates the mentor has blocked (holiday, busy day).
+model MentorBlockedDate {
+  id        String   @id @default(uuid())
+  mentorId  String
+  date      DateTime @db.Date
+  reason    String?
+  createdAt DateTime @default(now())
+
+  mentor MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+
+  @@unique([mentorId, date])
+  @@index([mentorId])
+}
+
+/// A student's booking of a mentor session.
+model MentorBooking {
+  id              String        @id @default(uuid())
+  studentId       String
+  mentorId        String
+  sessionId       String
+  /// Booked slot start (full UTC timestamp)
+  scheduledAt     DateTime
+  /// Duration in minutes (copied from session at booking time)
+  durationMins    Int
+  status          BookingStatus @default(PENDING_PAYMENT)
+  /// Meeting URL — set by mentor after confirming, visible only to both parties
+  meetingUrl      String?
+  studentNote     String?
+  mentorNote      String?
+  /// Amount paid in paise
+  amountInPaise   Int
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  student  User          @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Cascade)
+  mentor   MentorProfile @relation(fields: [mentorId], references: [id])
+  session  MentorSession @relation(fields: [sessionId], references: [id])
+  payment  MentorPayment?
+  review   MentorReview?
+
+  @@index([studentId])
+  @@index([mentorId])
+  @@index([scheduledAt])
+  @@index([status])
+}
+
+/// Payment record per booking — one-to-one with MentorBooking.
+model MentorPayment {
+  id                  String        @id @default(uuid())
+  bookingId           String        @unique
+  /// Razorpay order ID (created server-side)
+  razorpayOrderId     String        @unique
+  /// Razorpay payment ID (returned after capture)
+  razorpayPaymentId   String?
+  /// Razorpay signature (verified server-side)
+  razorpaySignature   String?
+  amountInPaise       Int
+  currency            String        @default("INR")
+  status              PaymentStatus @default(CREATED)
+  /// Raw Razorpay webhook payload stored for audit
+  webhookPayload      String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  booking MentorBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([razorpayOrderId])
+  @@index([status])
+}
+
+/// Review left by student after a COMPLETED booking.
+model MentorReview {
+  id        String   @id @default(uuid())
+  bookingId String   @unique
+  studentId String
+  mentorId  String
+  rating    Int      // 1–5
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  booking MentorBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  student User          @relation("StudentReviews", fields: [studentId], references: [id])
+  mentor  MentorProfile @relation(fields: [mentorId], references: [id])
+
+  @@index([mentorId])
+  @@index([studentId])
 }

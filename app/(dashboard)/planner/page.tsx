@@ -13,6 +13,7 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn, formatDate } from "@/lib/utils";
@@ -44,6 +45,7 @@ export default function PlannerPage() {
   const [newPriority, setNewPriority] =
     useState<"LOW" | "MEDIUM" | "HIGH">("MEDIUM");
   const [adding, setAdding] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   // Re-fetch whenever the selected date changes.
   // Previously the dep array was [] so navigating to a different day would
@@ -145,6 +147,38 @@ export default function PlannerPage() {
     toast.success("Task added!");
   }
 
+  async function generatePlan() {
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/planner/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: dateStr(selectedDate) }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || "Failed to generate plan");
+        return;
+      }
+
+      if (data.created === 0) {
+        toast.info(data.message ?? "No new tasks to add — you're all caught up!");
+        return;
+      }
+
+      // Merge new tasks into the existing list (avoid duplicates by id)
+      const existingIds = new Set(tasks.map((t) => t.id));
+      const newTasks = (data.tasks as Task[]).filter((t) => !existingIds.has(t.id));
+      setTasks([...tasks, ...newTasks]);
+      toast.success(data.message ?? `Added ${data.created} tasks`);
+    } catch {
+      toast.error("Network error — could not generate plan");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   const isToday = dateStr(selectedDate) === dateStr(new Date());
   const completed = tasks.filter((t) => t.completed).length;
 
@@ -165,12 +199,27 @@ export default function PlannerPage() {
             Plan your day, track your progress.
           </p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-xl text-sm font-medium hover:bg-violet-500 transition-colors"
-        >
-          <Plus className="w-4 h-4" /> Add Task
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={generatePlan}
+            disabled={generating || loading}
+            className="flex items-center gap-2 px-4 py-2 bg-violet-600/20 border border-violet-500/40 text-violet-300 rounded-xl text-sm font-medium hover:bg-violet-600/30 transition-colors disabled:opacity-40"
+            title={isToday ? "Auto-generate today's study tasks from your syllabus" : "Auto-generate tasks for this day"}
+          >
+            {generating ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Sparkles className="w-4 h-4" />
+            )}
+            {generating ? "Generating…" : "Generate Plan"}
+          </button>
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-xl text-sm font-medium hover:bg-violet-500 transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Add Task
+          </button>
+        </div>
       </div>
 
       <div className="flex items-center gap-3 mb-6 bg-[#0A0F1E] border border-white/8 rounded-2xl px-4 py-3">
@@ -295,12 +344,27 @@ export default function PlannerPage() {
           <div className="text-center py-16 text-slate-600">
             <CalendarDays className="w-12 h-12 mx-auto mb-3 opacity-30" />
             <div className="text-sm">No tasks for this day.</div>
-            <button
-              onClick={() => setShowForm(true)}
-              className="mt-2 text-violet-400 text-sm hover:text-violet-300"
-            >
-              Add a task →
-            </button>
+            <div className="flex items-center justify-center gap-3 mt-3">
+              <button
+                onClick={generatePlan}
+                disabled={generating}
+                className="flex items-center gap-1.5 text-violet-400 text-sm hover:text-violet-300 disabled:opacity-40"
+              >
+                {generating ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5" />
+                )}
+                Generate Plan
+              </button>
+              <span className="text-slate-700">·</span>
+              <button
+                onClick={() => setShowForm(true)}
+                className="text-slate-500 text-sm hover:text-slate-300"
+              >
+                Add manually →
+              </button>
+            </div>
           </div>
         )}
       </div>

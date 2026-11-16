@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import { SidebarProvider } from "@/components/layout/SidebarContext";
+import { getUserMentorStatus } from "@/lib/getUserMentorStatus";
 
 function PageFallback() {
   return (
@@ -17,22 +18,27 @@ function PageFallback() {
   );
 }
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Fetch once per request — React cache() deduplicates across layout + pages.
+  const mentorStatus = await getUserMentorStatus();
+
   return (
-    // SidebarProvider wraps both Sidebar and Header so the hamburger button
-    // in the header can open/close the sidebar via shared context.
     <SidebarProvider>
       <div className="min-h-screen bg-[#070B14]">
-        <Sidebar />
+        <Sidebar
+          isApprovedMentor={mentorStatus?.isApprovedMentor ?? false}
+          isAdmin={mentorStatus?.isAdmin ?? false}
+          mentorStatus={mentorStatus?.mentorStatus ?? null}
+        />
         <Header />
 
         {/*
-          On mobile (< lg): ml-0 because sidebar is an overlay, not inline.
-          On desktop (>= lg): ml-64 to sit alongside the fixed sidebar.
+          Mobile (< lg): ml-0 — sidebar is an overlay.
+          Desktop (>= lg): ml-64 — sits alongside the fixed sidebar.
           pt-16 clears the fixed header on all sizes.
         */}
         <main className="lg:ml-64 pt-16 min-h-screen">
