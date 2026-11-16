@@ -135,7 +135,7 @@ export default function MentorProfileClient({ mentor, studentId }: Props) {
     orderId: string; amount: number; keyId: string; bookingId: string; name: string;
   }) {
     return new Promise<void>((resolve, reject) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const Razorpay = (window as any).Razorpay;
       if (!Razorpay) {
         reject(new Error("Payment library not loaded. Please refresh the page."));
