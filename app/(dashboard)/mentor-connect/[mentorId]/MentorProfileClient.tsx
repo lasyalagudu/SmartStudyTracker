@@ -6,6 +6,7 @@ import {
   ChevronDown, ChevronUp, CalendarDays, IndianRupee,
   BookOpen, Award, Lightbulb, MessageSquare, ArrowLeft,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -199,7 +200,7 @@ export default function MentorProfileClient({ mentor, studentId }: Props) {
               style={{ background: `linear-gradient(135deg, ${accentColor}30, ${accentColor}10)`, border: `2px solid ${accentColor}40` }}
             >
               {mentor.photoUrl
-                ? <img src={mentor.photoUrl} alt={mentor.user.name ?? ""} className="w-full h-full rounded-2xl object-cover" />
+                ? <Image src={mentor.photoUrl} alt={mentor.user.name ?? ""} width={80} height={80} className="w-full h-full rounded-2xl object-cover" />
                 : getInitials(mentor.user.name)
               }
             </div>

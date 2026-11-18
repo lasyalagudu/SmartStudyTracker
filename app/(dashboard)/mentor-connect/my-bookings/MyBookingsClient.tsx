@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { Clock, Star, ArrowLeft, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
@@ -88,7 +89,7 @@ export default function MyBookingsClient({ bookings: initial }: Props) {
                     style={{ background: `${accent}20`, border: `1px solid ${accent}30` }}
                   >
                     {b.mentor.photoUrl
-                      ? <img src={b.mentor.photoUrl} alt="" className="w-full h-full rounded-xl object-cover" />
+                      ? <Image src={b.mentor.photoUrl} alt="" width={48} height={48} className="w-full h-full rounded-xl object-cover" />
                       : getInitials(b.mentor.user.name)
                     }
                   </div>

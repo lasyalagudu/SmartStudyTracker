@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   Search, Star, Clock, IndianRupee, BadgeCheck, Filter, Users,
@@ -361,7 +362,7 @@ function MentorCardComponent({ mentor }: { mentor: MentorCard }) {
           style={{ background: `linear-gradient(135deg, ${accentColor}40, ${accentColor}20)`, border: `1px solid ${accentColor}40` }}
         >
           {mentor.photoUrl
-            ? <img src={mentor.photoUrl} alt={mentor.user.name ?? ""} className="w-full h-full rounded-2xl object-cover" />
+            ? <Image src={mentor.photoUrl} alt={mentor.user.name ?? ""} width={56} height={56} className="w-full h-full rounded-2xl object-cover" />
             : getInitials(mentor.user.name)
           }
         </div>
