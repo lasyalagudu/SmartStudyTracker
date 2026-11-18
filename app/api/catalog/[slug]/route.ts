@@ -17,7 +17,7 @@ export async function GET(
 ) {
   try {
     const entry = await prisma.examCatalog.findUnique({
-      where: { slug: params.slug },
+      where: {slug},
       include: {
         subjects: {
           orderBy: { order: "asc" },
