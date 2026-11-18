@@ -16,6 +16,7 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const slug = await params
     const entry = await prisma.examCatalog.findUnique({
       where: {slug},
       include: {
