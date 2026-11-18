@@ -13,7 +13,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   _req: Request,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
     const entry = await prisma.examCatalog.findUnique({
@@ -32,7 +32,7 @@ export async function GET(
 
     if (!entry || !entry.isActive) {
       return NextResponse.json(
-        { error: `No catalog entry found for slug "${params.slug}"` },
+        { error: `No catalog entry found for slug "${slug}"` },
         { status: 404 }
       );
     }
