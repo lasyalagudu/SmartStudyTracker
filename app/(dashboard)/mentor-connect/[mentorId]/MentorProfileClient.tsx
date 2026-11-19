@@ -15,6 +15,7 @@ import {
   DAY_LABELS, generateSlots, formatTime,
 } from "@/lib/mentorUtils";
 import type { MentorProfile, MentorSession } from "@/types/mentor";
+import ChatDrawer from "@/components/mentor/ChatDrawer";
 
 interface Props {
   mentor: MentorProfile & {
@@ -43,7 +44,8 @@ export default function MentorProfileClient({ mentor, studentId }: Props) {
   const [selectedSlot, setSelectedSlot] = useState("");
   const [studentNote, setStudentNote] = useState("");
   const [booking, setBooking]   = useState(false);
-  const [bookingDone, setBookingDone] = useState<string | null>(null); // bookingId
+  const [bookingDone, setBookingDone] = useState<string | null>(null);
+  const [showChat, setShowChat] = useState(false);
 
   const accentColor = examColor(mentor.primaryExam);
   const primaryExam = mentor.exams[0];
@@ -183,14 +185,34 @@ export default function MentorProfileClient({ mentor, studentId }: Props) {
       {/* Razorpay SDK */}
       <script src="https://checkout.razorpay.com/v1/checkout.js" async />
 
+      {/* Chat Drawer */}
+      {showChat && (
+        <ChatDrawer
+          mentorId={mentor.id}
+          mentorName={mentor.user.name ?? "Mentor"}
+          currentUserId={studentId}
+          onClose={() => setShowChat(false)}
+        />
+      )}
+
       <div className="max-w-4xl">
-        {/* Back */}
-        <Link
-          href="/mentor-connect"
-          className="inline-flex items-center gap-1.5 text-slate-500 hover:text-white text-sm mb-6 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" /> Back to Mentors
-        </Link>
+        {/* Back + Message */}
+        <div className="flex items-center justify-between mb-6">
+          <Link
+            href="/mentor-connect"
+            className="inline-flex items-center gap-1.5 text-slate-500 hover:text-white text-sm transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back to Mentors
+          </Link>
+
+          <button
+            onClick={() => setShowChat(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-[#0A0F1E] border border-white/10 text-slate-300 rounded-xl text-sm hover:border-violet-500/40 hover:text-violet-300 active:scale-95 transition-all"
+          >
+            <MessageSquare className="w-4 h-4" />
+            Message
+          </button>
+        </div>
 
         {/* Hero card */}
         <div className="bg-[#0A0F1E] border border-white/8 rounded-2xl p-6 mb-6">

@@ -35,13 +35,11 @@ const W_DIFF      = { HARD: 20, MEDIUM: 10, EASY: 0 } as const;
 
 // A topic planned in the last N days won't be suggested again.
 // This is the key fix — it forces the plan to cycle through the syllabus.
-const COOLDOWN_DAYS = 2;
+// Cap per day — 5 topics is realistic for a student
+const MAX_TOPICS_PER_DAY = 5;
 
-// Revision is due when the topic hasn't been revised in this many days.
-const REVISION_INTERVAL_DAYS = 7;
-
-// Cap per day — keeps the plan realistic.
-const MAX_TOPICS_PER_DAY = 8;
+// A topic planned in the last N days won't be suggested again.
+const COOLDOWN_DAYS = 1; // 1 day cooldown so tomorrow always gets different topics
 
 function dateStr(d: Date) {
   return d.toISOString().split("T")[0];
@@ -95,41 +93,53 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No active exam found" }, { status: 404 });
     }
 
-    // ── 2. Find topics already planned in the cooldown window ────────────────
-    // This is the core fix: instead of only checking TODAY, we check the last
-    // COOLDOWN_DAYS so the plan doesn't repeat the same topics every day.
+    // ── 2. Find topics already planned OR completed in the cooldown window ───
+    // Check both planned tasks AND completed tasks so the cooldown works even
+    // if the student deletes their planned tasks or generates fresh each day.
     const cooldownStart = new Date(targetDate);
     cooldownStart.setDate(cooldownStart.getDate() - COOLDOWN_DAYS);
 
-    const recentTasks = await prisma.task.findMany({
-      where: {
-        userId: user.id,
-        dueDate: {
-          gte: cooldownStart,
-          lte: targetEnd,
+    const [recentTasks, recentCompletedTopics] = await Promise.all([
+      prisma.task.findMany({
+        where: {
+          userId: user.id,
+          dueDate: { gte: cooldownStart, lte: targetEnd },
+          topicId: { not: null },
         },
-        topicId: { not: null },
-      },
-      select: { topicId: true, dueDate: true },
-    });
+        select: { topicId: true, dueDate: true },
+      }),
+      // Also check topics that were actually completed recently via syllabus
+      prisma.topic.findMany({
+        where: {
+          subject: { examId: exam.id },
+          status: "IN_PROGRESS",
+          updatedAt: { gte: cooldownStart },
+        },
+        select: { id: true },
+      }),
+    ]);
 
-    // Topics planned today (don't re-add them even as duplicates)
+    // Topics planned today — never re-add as duplicates
     const todayTopicIds = new Set(
       recentTasks
         .filter((t) => t.dueDate && t.dueDate >= targetStart)
         .map((t) => t.topicId as string)
     );
 
-    // Topics in the cooldown window (skip from new generation)
-    const recentTopicIds = new Set(
-      recentTasks.map((t) => t.topicId as string)
-    );
+    // Topics in cooldown window — skip unless IN_PROGRESS
+    const recentTopicIds = new Set([
+      ...recentTasks.map((t) => t.topicId as string),
+      ...recentCompletedTopics.map((t) => t.id),
+    ]);
 
-    // ── 3. Available minutes ─────────────────────────────────────────────────
+    // ── 3. Available minutes — cap at 4 hours regardless of goal ────────────
+    // Previously used the full dailyStudyGoalMinutes (360 min = 6h) which
+    // caused 12 topics to be selected every day. Cap at 4h so the plan
+    // generates 4-5 focused topics instead of an overwhelming list.
     const dailyGoalMinutes = user.dailyStudyGoalMinutes ?? 360;
     const availableMinutes = hoursOverride
       ? hoursOverride * 60
-      : dailyGoalMinutes;
+      : Math.min(dailyGoalMinutes, 240); // 4h max per generated plan
 
     // ── 4. Score candidates ──────────────────────────────────────────────────
     const daysUntilExam = exam.targetDate

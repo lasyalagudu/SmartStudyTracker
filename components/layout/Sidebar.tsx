@@ -6,7 +6,7 @@ import {
   LayoutDashboard, BookOpen, CalendarDays, Timer, BarChart3,
   FileWarning, Settings, LogOut, Rocket, Crown, X, Users,
   GraduationCap, Clock, Star, IndianRupee, CalendarCheck,
-  ShieldAlert,
+  ShieldAlert, MessageSquare,
 } from "lucide-react";
 import { useClerk } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
@@ -33,6 +33,7 @@ const MENTOR_NAV = [
   { href: "/mentor-studio/sessions",     label: "Sessions",     icon: BookOpen },
   { href: "/mentor-studio/availability", label: "Availability", icon: CalendarCheck },
   { href: "/mentor-studio/bookings",     label: "Bookings",     icon: Clock },
+  { href: "/mentor-studio/inbox",        label: "Inbox",        icon: MessageSquare },
   { href: "/mentor-studio/earnings",     label: "Earnings",     icon: IndianRupee },
   { href: "/mentor-studio/reviews",      label: "Reviews",      icon: Star },
 ];
