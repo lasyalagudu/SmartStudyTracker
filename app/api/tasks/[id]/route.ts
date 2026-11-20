@@ -25,19 +25,60 @@ export async function PATCH(
     const body = await req.json();
 
     const task = await prisma.task.update({
-  where: {
-    id,
-    userId: user.id,
-  },
-  data: {
-    completed: body.completed,
-    completedAt: body.completed ? new Date() : null,
-  },
-  include: {
-    subject: true,
-    topic: true,
-  },
-});
+      where: {
+        id,
+        userId: user.id,
+      },
+      data: {
+        completed: body.completed,
+        completedAt: body.completed ? new Date() : null,
+      },
+      include: {
+        subject: true,
+        topic: true,
+      },
+    });
+
+    // ── Sync topic readiness flags when a linked task is completed ──────────
+    // Generated planner tasks have titles like "📖 Study: TopicName" or
+    // "📝 Revise: TopicName".  When the student completes such a task we
+    // update the linked Topic's readiness flags so the Syllabus Tracker
+    // reflects progress automatically.
+    if (body.completed === true && task.topicId) {
+      const topic = await prisma.topic.findUnique({
+        where: { id: task.topicId },
+        select: { id: true, status: true, theoryDone: true, revisionDone: true, mastered: true },
+      });
+
+      if (topic && !topic.mastered) {
+        const isStudyTask    = task.title.startsWith("📖 Study");
+        const isRevisionTask = task.title.startsWith("📝 Revise");
+
+        if (isStudyTask && !topic.theoryDone) {
+          // Studied the topic → mark theory done (moves NOT_STARTED → IN_PROGRESS)
+          await prisma.topic.update({
+            where: { id: topic.id },
+            data: {
+              theoryDone: true,
+              status: topic.status === "NOT_STARTED" ? "IN_PROGRESS" : topic.status,
+            },
+          });
+        }
+
+        if (isRevisionTask && !topic.revisionDone) {
+          // Revised the topic → mark revision done + update timestamp
+          await prisma.topic.update({
+            where: { id: topic.id },
+            data: {
+              revisionDone: true,
+              lastRevisedAt: new Date(),
+              status: topic.status === "NOT_STARTED" ? "IN_PROGRESS" : topic.status,
+            },
+          });
+        }
+      }
+    }
+
     if (body.completed === true) {
   const nextStreak = calculateNextStreak(
     user.streakCount,
