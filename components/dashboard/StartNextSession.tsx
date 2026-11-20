@@ -21,9 +21,13 @@ export default function StartNextSession({ subjects }: Props) {
           <Play className="w-4 h-4 text-violet-400" />
           <h3 className="font-semibold text-white">Start Next Session</h3>
         </div>
-        <button className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+        <Link
+          href="/planner"
+          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+          title="Open planner"
+        >
           <Plus className="w-4 h-4 text-slate-400" />
-        </button>
+        </Link>
       </div>
 
       {nextSubject && nextTopic ? (
@@ -49,7 +53,13 @@ export default function StartNextSession({ subjects }: Props) {
           <div className="flex items-center gap-2 text-sm text-slate-400">
             <Clock className="w-4 h-4" />
             <span>Estimated Time</span>
-            <span className="text-white font-medium ml-auto">45 mins</span>
+            <span className="text-white font-medium ml-auto">
+              {nextTopic.estimatedHours
+                ? nextTopic.estimatedHours >= 1
+                  ? `${nextTopic.estimatedHours}h`
+                  : `${nextTopic.estimatedHours * 60} mins`
+                : "45 mins"}
+            </span>
           </div>
 
           <Link

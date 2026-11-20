@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} scripts/seedCatalog.ts",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",

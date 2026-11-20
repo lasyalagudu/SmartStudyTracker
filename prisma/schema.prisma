@@ -34,6 +34,8 @@ model User {
   mentorProfile   MentorProfile?
   studentBookings MentorBooking[] @relation("StudentBookings")
   studentReviews  MentorReview[]  @relation("StudentReviews")
+  studentMessages MentorMessage[] @relation("StudentMessages")
+  sentMessages    MentorMessage[] @relation("SentMessages")
 }
 
 model Exam {
@@ -296,6 +298,31 @@ enum Difficulty {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Mentor Messaging
+// ─────────────────────────────────────────────────────────────────────────────
+
+model MentorMessage {
+  id         String   @id @default(cuid())
+  /// The mentor profile this conversation belongs to
+  mentorId   String
+  /// The student who initiated / is part of this thread
+  studentId  String
+  /// Who sent this specific message
+  senderId   String
+  content    String
+  /// false until the recipient reads it
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  mentor  MentorProfile @relation(fields: [mentorId],  references: [id], onDelete: Cascade)
+  student User          @relation("StudentMessages",    fields: [studentId], references: [id], onDelete: Cascade)
+  sender  User          @relation("SentMessages",       fields: [senderId],  references: [id], onDelete: Cascade)
+
+  @@index([mentorId, studentId, createdAt])
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Mentor Connect — new enums
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -383,6 +410,7 @@ model MentorProfile {
   blockedDates  MentorBlockedDate[]
   bookings      MentorBooking[]
   reviews       MentorReview[]
+  messages      MentorMessage[]
 
   @@index([status])
   @@index([primaryExam])

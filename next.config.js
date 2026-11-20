@@ -1,10 +1,18 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // ESLint errors are real problems — don't hide them at build time
-  // eslint: { ignoreDuringBuilds: true },  // removed
-
-  // Let Next.js optimize images (WebP conversion, lazy loading, resizing)
-  // images: { unoptimized: true },         // removed — was disabling all optimization
+  images: {
+    // Allow external profile photo URLs from common sources.
+    // Add more domains here if mentors use other image hosts.
+    remotePatterns: [
+      { protocol: "https", hostname: "**.googleusercontent.com" },
+      { protocol: "https", hostname: "**.githubusercontent.com" },
+      { protocol: "https", hostname: "**.supabase.co" },
+      { protocol: "https", hostname: "media.licdn.com" },
+      { protocol: "https", hostname: "**.cloudinary.com" },
+      { protocol: "https", hostname: "images.clerk.dev" },
+      { protocol: "https", hostname: "**.clerk.com" },
+    ],
+  },
 };
 
 module.exports = nextConfig;

@@ -42,7 +42,7 @@ export default function RevisionDue({ subjects }: Props) {
               <div className="text-sm font-medium text-white truncate">
                 {topic.subjectName} – {topic.name}
               </div>
-              <div className="text-xs text-orange-400">Due Today</div>
+              <div className="text-xs text-orange-400">Revision Pending</div>
             </div>
             <Link
               href="/syllabus"
