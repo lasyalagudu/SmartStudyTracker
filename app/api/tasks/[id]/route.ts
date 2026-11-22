@@ -1,4 +1,3 @@
-
 import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -13,10 +12,7 @@ export async function PATCH(
     const clerkUser = await currentUser();
 
     if (!clerkUser) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
@@ -24,10 +20,7 @@ export async function PATCH(
     });
 
     if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     const body = await req.json();
@@ -44,28 +37,46 @@ export async function PATCH(
       },
     });
 
-    // Update linked topic status when task is completed
+    // ── Sync topic readiness flags when a linked task is completed ──────────
+    // Generated planner tasks have titles like "📖 Study: TopicName" or
+    // "📝 Revise: TopicName".  When the student completes such a task we
+    // update the linked Topic's readiness flags so the Syllabus Tracker
+    // reflects progress automatically.
     if (body.completed === true && task.topicId) {
       const topic = await prisma.topic.findUnique({
         where: { id: task.topicId },
+        select: {
+          id: true,
+          status: true,
+          theoryDone: true,
+          revisionDone: true,
+          mastered: true,
+        },
       });
 
-      if (topic) {
-        const isRevision = task.title?.startsWith("📝 Revise");
+      if (topic && !topic.mastered) {
+        const isStudyTask = task.title.startsWith("📖 Study");
+        const isRevisionTask = task.title.startsWith("📝 Revise");
 
-        if (isRevision) {
+        if (isStudyTask && !topic.theoryDone) {
+          await prisma.topic.update({
+            where: { id: topic.id },
+            data: {
+              theoryDone: true,
+              status:
+                topic.status === "NOT_STARTED" ? "IN_PROGRESS" : topic.status,
+            },
+          });
+        }
+
+        if (isRevisionTask && !topic.revisionDone) {
           await prisma.topic.update({
             where: { id: topic.id },
             data: {
               revisionDone: true,
               lastRevisedAt: new Date(),
-            },
-          });
-        } else if (topic.status === "NOT_STARTED") {
-          await prisma.topic.update({
-            where: { id: topic.id },
-            data: {
-              status: "IN_PROGRESS",
+              status:
+                topic.status === "NOT_STARTED" ? "IN_PROGRESS" : topic.status,
             },
           });
         }
@@ -93,9 +104,7 @@ export async function PATCH(
     return NextResponse.json(
       {
         error:
-          error instanceof Error
-            ? error.message
-            : "Something went wrong",
+          error instanceof Error ? error.message : "Something went wrong",
       },
       { status: 500 }
     );
@@ -111,10 +120,7 @@ export async function DELETE(
     const clerkUser = await currentUser();
 
     if (!clerkUser) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
@@ -122,10 +128,7 @@ export async function DELETE(
     });
 
     if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     await prisma.task.delete({
@@ -137,9 +140,7 @@ export async function DELETE(
     return NextResponse.json(
       {
         error:
-          error instanceof Error
-            ? error.message
-            : "Something went wrong",
+          error instanceof Error ? error.message : "Something went wrong",
       },
       { status: 500 }
     );
