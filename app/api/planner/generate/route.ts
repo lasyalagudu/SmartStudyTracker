@@ -38,6 +38,8 @@ const W_DIFF      = { HARD: 20, MEDIUM: 10, EASY: 0 } as const;
 // Cap per day — 5 topics is realistic for a student
 const MAX_TOPICS_PER_DAY = 5;
 
+const REVISION_INTERVAL_DAYS = 7;
+
 // A topic planned in the last N days won't be suggested again.
 const COOLDOWN_DAYS = 1; // 1 day cooldown so tomorrow always gets different topics
 
